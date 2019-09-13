@@ -1,0 +1,10 @@
+{% extends "layout.html" %}
+{% block content %}
+  <h3>Overview of initiatives</h3>
+  <br>
+<ul>
+{% for initiative in issues %}
+<li><a href="report-{{initiative.key}}.html">{{initiative.fields.summary}}</a></li>
+{% endfor %}
+</ul>
+{% endblock %}

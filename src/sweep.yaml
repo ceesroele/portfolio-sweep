@@ -1,0 +1,7 @@
+jira:
+  server: https://sweep.atlassian.net/
+  username: <Jira username>
+  token: <Get token from Jira>
+
+database:
+  filename: sweep.db
