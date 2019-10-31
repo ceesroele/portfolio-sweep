@@ -4,6 +4,11 @@ Created on Aug 12, 2019
 @author: cjr
 '''
 import plotly.graph_objects as go
+import plotly.offline
+import os
+from Config import Config
+from service.PortfolioService import PortfolioService
+from service.ReportService import ReportService
 
 class BurnupChart:
     def __init__(self, title, xaxis_title, yaxis_title):
@@ -18,17 +23,33 @@ class BurnupChart:
     def __str__(self):
         return self.name
     
-    def to_html(self,filename):
+    def to_html(self,filename,initiative=None):
             self.fig.update_layout(title=self.title,
                    xaxis_title=self.xaxis_title,
                    yaxis_title=self.yaxis_title)
-            html_string = self.fig.to_html()
-            f = open(filename,'w')
-            f.write(html_string)
+            presult = plotly.offline.plot(self.fig, config={"displayModeBar": False}, 
+                                          show_link=False,
+                                          include_plotlyjs=False,
+                                          output_type='div')
+            #print(presult)
+            ## New version
+            reportService = ReportService(config)
+            template = reportService.env.get_template('charts.html')
+            meta = dict(
+                title='Burnup chart'
+                )
+            f = open('chart-%s.html' % "foo",'w')
+            f.write(template.render(burnup_chart=presult,initiative=initiative,meta=meta))
+            print("file://"+os.path.realpath(f.name))
             f.close()
 
 
+
 if __name__ == '__main__':
+    config = Config('../../sweep.yaml')
+    portfolio = PortfolioService(config)
+    portfolioData = portfolio.loadPortfolio()
+
     # Add data
     ##month = ['January', 'February', 'March', 'April', 'May', 'June', 'July',
     ##     'August', 'September', 'October', 'November', 'December']
@@ -57,10 +78,7 @@ if __name__ == '__main__':
     chart.add_trace(month,low_2000,'Low 2000',
                     dict(color='royalblue',width=2,dash='dot'))
     
-    chart.to_html('/Users/cjr/report.html')
+    initiative = portfolio.get(key="PORT-8")
+    chart.to_html('/Users/cjr/chart.html',initiative=initiative)    
     print("done")
-#     html_string = fig.to_html()
-#     f = open('/Users/cjr/report.html','w')
-#     f.write(html_string)
-#     f.close()
     

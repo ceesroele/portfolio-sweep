@@ -4,7 +4,7 @@
   <br>
 <ul>
 {% for initiative in issues %}
-<li><a href="report-{{initiative.key}}.html">{{initiative.fields.summary}}</a></li>
+<li><a href="report-{{initiative.jiraIssue.key}}.html">{{initiative.jiraIssue.fields.summary}}</a></li>
 {% endfor %}
 </ul>
 {% endblock %}

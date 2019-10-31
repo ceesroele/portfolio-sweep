@@ -13,8 +13,11 @@ for history in changelog.histories:
             print 'Date:' + history.created + ' From:' + item.fromString + ' To:' + item.toString
 '''
 import pickle
-import pprint
 import jira.resources
+from data.JiraObjectData import PortfolioData, InitiativeData, EpicData, IssueData, jira2DataObject
+import sys
+import datetime
+
 
 
 class PortfolioService(object):
@@ -22,29 +25,120 @@ class PortfolioService(object):
     classdocs
     '''
 
-
     def __init__(self, config):
         '''
         Constructor
         Using api token with label evolution
         '''
         self.config = config
-        #self.jira = JIRA(options, basic_auth=('cees.roele@gmail.com', 'XMPl3UaNMItaNZewMlJKA9F5'))
-        #self.jira = config.getJira()
+        self.jira = config.getJira()
         self.persist = Persist(config)
-    def load(self,key=None):
-        
-        # Get all projects viewable by anonymous users.
-        #projects = self.jira.projects()
-        
-        # Find all issues reported by the admin
-        #issues = self.jira.search_issues('assignee=admin')
-        #issues = self.jira.search_issues('project=PORT')
-        #for issueData in issues:
-        #    print(type(issueData))
-        #    #pprint.pprint(issueData.raw)
-        #    self.persist.store(issueData)
-        return self.persist.load(key=key)
+    def loadPortfolio(self):
+        if self.config.loadingMode() == 'jira':
+            return self.loadPortfolioJira()
+        elif self.config.loadingMode() == 'database':
+            return self.loadPortfolioDatabase()
+        elif self.config.loadingMode() == 'mixed':
+            return self.loadPortfolioMixed()
+        else:
+            print("Unknown loading mode: %s\n[loading: [mode={..}]] in %s " % (self.config.loadingMode(),self.config.configfile))
+            sys.exit(0)
+            
+    def loadPortfolioJira(self):
+        start = datetime.datetime.now()
+        initiatives = self.jira.search_issues('project=PORT')
+            
+        initiativeDataList = []
+        #print("Sagas")
+        #print(list(filter(lambda x: str(x.fields.issuetype) == 'Epic', initiatives)))
+        #print("Initiatives")
+        #print(list(filter(lambda x: str(x.fields.issuetype) != 'Epic', initiatives)))
+        for initiative in initiatives:
+            #print(initiative.key+"; type="+str(initiative.fields.issuetype))
+            #self.persist.load(key=initiative.key)
+            #pprint.pprint(issueData.raw)
+            epics = []
+            for link in initiative.fields.issuelinks:
+                if hasattr(link, "outwardIssue"):
+                    outwardIssue = link.outwardIssue
+                    # FIXME: this is already a mixed mode!
+                    #data = self.persist.load(key=outwardIssue.key)
+                    #if data is not None:
+                    #    outwardIssue = data
+                    #else:
+                    #    outwardIssue = jira2DataObject(self.jira.issue(outwardIssue.key))
+                    # FIXME: convert into object here
+                    outwardIssue = jira2DataObject(self.jira.issue(outwardIssue.key))
+                    if str(outwardIssue.jiraIssue.fields.issuetype) == 'Epic':
+                        # Get the issues for the epic
+                        epicIssues = self.jira.search_issues("'Epic Link'="+outwardIssue.jiraIssue.key)
+                        epicDataIssues = []
+                        for eI  in epicIssues:
+                            print("under epic "+outwardIssue.jiraIssue.key+": "+eI.key)
+                            #self.persist.load(key=eI.key)
+
+                            eI = self.jira.issue(eI.key, expand="changelog")
+                            epicIssueData = IssueData(jiraIssue=eI)
+                            self.persist.store(epicIssueData)
+                            epicDataIssues.append(epicIssueData)
+                        epicData = outwardIssue #EpicData(jiraIssue=outwardIssue, issues=epicDataIssues)
+                        epicData.issues = epicDataIssues
+                        epics.append(epicData)
+                        self.persist.store(epicData)
+                    else:
+                        print("type = '%s'" % (outwardIssue.fields.issuetype,))
+                if hasattr(link, "inwardIssue"):
+                    inwardIssue = link.inwardIssue
+                    print("\tInward: " + inwardIssue.key)
+            initiativeData = InitiativeData(jiraIssue=initiative, epics=epics)
+            initiativeDataList.append(initiativeData)
+            self.persist.store(initiativeData)
+        pd = PortfolioData(self.config.getPortfolio(), initiativeDataList)
+        print("Loaded portfolio in %s" % (datetime.datetime.now()-start),)
+        return pd
+    def loadPortfolioDatabase(self):
+        #initiatives = self.jira.search_issues('project=PORT')
+        start = datetime.datetime.now()
+        initiatives = self.persist.loadInitiatives()
+            
+        initiativeDataList = []
+        #print("Sagas")
+        #print(list(filter(lambda x: str(x.jiraIssue.fields.issuetype) == 'Epic', initiatives)))
+        #print("Initiatives")
+        #print(list(filter(lambda x: str(x.jiraIssue.fields.issuetype) != 'Epic', initiatives)))
+        for initiative in initiatives:
+            print(initiative.jiraIssue.key+"; type="+str(initiative.jiraIssue.fields.issuetype))
+            epics = []
+            for link in initiative.jiraIssue.fields.issuelinks:
+                if hasattr(link, "outwardIssue"):
+                    outwardIssue = self.persist.load(key=link.outwardIssue.key)
+                    if str(outwardIssue.jiraIssue.fields.issuetype) == 'Epic':
+                        # Get the issues for the epic
+                        #epicIssues = self.jira.search_issues("'Epic Link'="+outwardIssue.jiraIssue.key)
+                        epicDataIssues = []
+                        for ekey in outwardIssue.getStructure()['children']:
+                            epicIssueData = self.persist.load(ekey)
+                            epicDataIssues.append(epicIssueData)
+                        epicData = outwardIssue #EpicData(jiraIssue=outwardIssue, issues=epicDataIssues)
+                        epicData.issues = epicDataIssues
+                        epics.append(epicData)
+                    else:
+                        print("type = '%s'" % (outwardIssue.fields.issuetype,))
+                if hasattr(link, "inwardIssue"):
+                    inwardIssue = link.inwardIssue
+                    print("\tInward: " + inwardIssue.key)
+            #initiativeData = InitiativeData(jiraIssue=initiative, epics=epics)
+            initiative.epics = epics
+            initiativeDataList.append(initiative)
+        pd = PortfolioData(self.config.getPortfolio(), initiativeDataList)
+        print("Loaded portfolio in %s" % (datetime.datetime.now()-start),)
+        return pd
+    def loadPortfolioMixed(self):
+        print("Loading mixed style (optimum from jira+database) is not implemented")
+        sys.exit(0)
+        pass
+    def get(self,key=None):
+        return self.persist.load(key,None)
     def jira(self):
         return self.jira
     def issue(self,key,expand=None):
@@ -57,10 +151,17 @@ class Persist(object):
         c = conn.cursor()
 
         # Create table
+        #  key: Jira issue key
+        #  updated: Jira updated field
+        #  issuetype: Jira issue type field
+        #  issuestructure: relation with children, e.g. children of an Epic, Epics of an Initiative
+        #  issue: pickled data of the Jira issue
         c.execute('''CREATE TABLE IF NOT EXISTS issues
              (
              key TEXT PRIMARY KEY, 
-             updated timestamp, 
+             updated timestamp,
+             issuetype TEXT,
+             issuestructure TEXT,
              issue BLOB
              )''')
         conn.commit()
@@ -68,49 +169,95 @@ class Persist(object):
         c.close()
         conn.close()
         
-    def store(self, issueData):
-        print(issueData)
-        conn = self.config.getJira()
+    def store(self, objectData):
+        conn = self.config.getDatabase()
         c = conn.cursor()
-        print('updated type=%',type(issueData.fields.updated))
-        c.execute('''INSERT OR REPLACE INTO issues VALUES (?,?,?)''',
+        print("store "+objectData.jiraIssue.key+"; type="+objectData.getType()+"; estimate="+str(objectData.jiraIssue.fields.timeestimate)+"; struct="+str(objectData.getStructure()))
+        #print('updated type=%s' % (type(objectData.jiraIssue.fields.updated),))
+        c.execute('''INSERT OR REPLACE INTO issues VALUES (?,?,?,?,?)''',
                   (
-                      issueData.key, 
-                      issueData.fields.updated,
-                      pickle.dumps(issueData.raw)))
-        print('inserted %', issueData.key)
-        c.execute('''select * from issues''')
-        res = c.fetchone()
-        raw_issue = pickle.loads(res[2])
+                      objectData.jiraIssue.key,
+                      objectData.jiraIssue.fields.updated,
+                      objectData.getType(),                      
+                      str(objectData),
+                      pickle.dumps(objectData.jiraIssue.raw)))
+        print('inserted %s' % (objectData.jiraIssue.key,))
+        #c.execute('''select * from issues''')
+        #res = c.fetchone()
+        #raw_issue = pickle.loads(res[2])
         #x = dict2resource(raw_issue)
-        x = jira.resources.Issue(None, None, raw_issue)
-        print("loading issue from db:")
-        pprint.pprint(x.__dict__)
+        #x = jira.resources.Issue(None, None, raw_issue)
+        #print("loading issue from db:")
+        #pprint.pprint(x.__dict__)
         #print(res[2])
         conn.commit()
         c.close()
         conn.close()
-    def load(self, key=None):
+    def load(self, key=None, updated=None):
         '''
         For now: only load from database
         '''
-        issues = []
-        conn = self.config.getDatabase()
-        c = conn.cursor()
-        if (key == None):
-            c.execute('''select * from issues''')
+        if key is None:
+            return None
         else:
+            conn = self.config.getDatabase()
+            c = conn.cursor()
             c.execute('''select * from issues where key=?''',(key,))
-        res = c.fetchall()
-        for row in res:
-            raw_issue = pickle.loads(row[2])
-            x = jira.resources.Issue(None, None, raw_issue)
-            issues.append(x)
-        c.close()
-        conn.close()
-        return issues
+            res = c.fetchall()
+            result = None
+            for row in res:
+                raw_issue = pickle.loads(row[4])
+                issuetype = row[2]
+                issuestructure = row[3]
+                x = jira.resources.Issue(None, None, raw_issue)
+                if issuetype == 'Initiative':
+                    print("Loading initiative: "+issuestructure)
+                    d = eval(issuestructure)
+                    children = []
+                    if 'children' in d.keys():
+                        for k in d['children']:
+                            children.append(self.load(key=k))
+                    else:
+                        print("No 'children' in dictionary"+str(d))
+                    result = InitiativeData(jiraIssue=x,epics=children)                   
+                elif issuetype == 'Epic':
+                    print("Loading epic: "+issuestructure)
+                    d = eval(issuestructure)
+                    children = []
+                    if 'children' in d.keys():
+                        for k in d['children']:
+                            children.append(self.load(key=k))
+                    else:
+                        print("No 'children' in dictionary"+str(d))
+                    result = EpicData(jiraIssue=x,issues=children)
+                else:
+                    result = IssueData(jiraIssue=x)
+            c.close()
+            conn.close()
+            return result
+    def loadInitiatives(self):
+            conn = self.config.getDatabase()
+            c = conn.cursor()
+            c.execute("select * from issues where key LIKE 'PORT%'")
+            res = c.fetchall()
+            initiatives = []
+            for row in res:
+                key = row[0]
+                raw_issue = pickle.loads(row[4])
+                issuetype = row[2]
+                issuestructure = row[3]
+                x = jira.resources.Issue(None, None, raw_issue)
+                print("Loading initiative: "+issuestructure)
+                d = eval(issuestructure)
+                children = []
+                if 'children' in d.keys():
+                    for k in d['children']:
+                        children.append(self.load(key=k))
+                else:
+                    print("No 'children' in dictionary"+str(d)+" for initiatve"+key)
+                initiatives.append(InitiativeData(jiraIssue=x,epics=children))
+            return initiatives              
 
-        
 if __name__ == 'main':
     pass
             

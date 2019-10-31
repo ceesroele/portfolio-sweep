@@ -1,3 +1,6 @@
+portfolio:
+  name: <Name your portfolio>
+
 jira:
   server: https://sweep.atlassian.net/
   username: <Jira username>
@@ -5,3 +8,10 @@ jira:
 
 database:
   filename: sweep.db
+  path: <Enter path>
+
+loading:
+  mode: {jira|mixed|database}
+
+reports:
+  directory: <your directory>

@@ -1,0 +1,7 @@
+{% extends "layout.html" %}
+{% block content %}
+  <h3>Charts for {{initiative.jiraIssue.fields.summary}}</h3>
+  <br>
+  <p>Key: {{initiative.jiraIssue.key}}</p>
+{{burnup_chart}}
+{% endblock %}

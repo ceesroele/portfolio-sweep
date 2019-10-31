@@ -1,6 +1,27 @@
 {% extends "layout.html" %}
 {% block content %}
-  <h3>Detail page for {{issue.fields.summary}}</h3>
+  <h3>Detail page for {{issue.jiraIssue.fields.summary}}</h3>
   <br>
-  <p>Key: {{issue.key}}</p>
+{% for post in posts %}
+                <div class="post">
+                        <div class="title">
+{% if post.link %}
+                                <h2><a href="portfolio.html">{{ post.title }}</a></h2>
+{% else %}
+                                <h2>{{ post.title }}</h2>
+{% endif %}
+{% if post.subtitle %}
+                                <p><small>.<a href="http://templated.co" rel="nofollow">y</a></small></p>
+{% endif %}
+                        </div>
+                        <div class="entry">
+                                {{ post.post }}
+                        </div>
+{% if post.morelink %}
+                        <p class="links"> <a href="{{ post.morelink }}" class="more">Read More</a></p>
+{% endif %}
+                </div>
+
+        </div>
+{% endfor %}
 {% endblock %}
