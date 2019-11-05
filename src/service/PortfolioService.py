@@ -50,11 +50,11 @@ class PortfolioService(object):
             
         initiativeDataList = []
         #print("Sagas")
-        #print(list(filter(lambda x: str(x.fields.issuetype) == 'Epic', initiatives)))
+        #print(list(filter(lambda x: x.issuetype == 'Epic', initiatives)))
         #print("Initiatives")
-        #print(list(filter(lambda x: str(x.fields.issuetype) != 'Epic', initiatives)))
+        #print(list(filter(lambda x: x.issuetype != 'Epic', initiatives)))
         for initiative in initiatives:
-            #print(initiative.key+"; type="+str(initiative.fields.issuetype))
+            #print(initiative.key+"; type="+initiative.issuetype)
             #self.persist.load(key=initiative.key)
             #pprint.pprint(issueData.raw)
             epics = []
@@ -69,12 +69,12 @@ class PortfolioService(object):
                     #    outwardIssue = jira2DataObject(self.jira.issue(outwardIssue.key))
                     # FIXME: convert into object here
                     outwardIssue = jira2DataObject(self.jira.issue(outwardIssue.key))
-                    if str(outwardIssue.jiraIssue.fields.issuetype) == 'Epic':
+                    if outwardIssue.issuetype == 'Epic':
                         # Get the issues for the epic
-                        epicIssues = self.jira.search_issues("'Epic Link'="+outwardIssue.jiraIssue.key)
+                        epicIssues = self.jira.search_issues("'Epic Link'="+outwardIssue.key)
                         epicDataIssues = []
                         for eI  in epicIssues:
-                            print("under epic "+outwardIssue.jiraIssue.key+": "+eI.key)
+                            print("under epic "+outwardIssue.key+": "+eI.key)
                             #self.persist.load(key=eI.key)
 
                             eI = self.jira.issue(eI.key, expand="changelog")
@@ -86,7 +86,7 @@ class PortfolioService(object):
                         epics.append(epicData)
                         self.persist.store(epicData)
                     else:
-                        print("type = '%s'" % (outwardIssue.fields.issuetype,))
+                        print("type = '%s'" % (outwardIssue.issuetype,))
                 if hasattr(link, "inwardIssue"):
                     inwardIssue = link.inwardIssue
                     print("\tInward: " + inwardIssue.key)
@@ -103,16 +103,16 @@ class PortfolioService(object):
             
         initiativeDataList = []
         #print("Sagas")
-        #print(list(filter(lambda x: str(x.jiraIssue.fields.issuetype) == 'Epic', initiatives)))
+        #print(list(filter(lambda x: x.issuetype == 'Epic', initiatives)))
         #print("Initiatives")
-        #print(list(filter(lambda x: str(x.jiraIssue.fields.issuetype) != 'Epic', initiatives)))
+        #print(list(filter(lambda x: x.issuetype != 'Epic', initiatives)))
         for initiative in initiatives:
-            print(initiative.jiraIssue.key+"; type="+str(initiative.jiraIssue.fields.issuetype))
+            print(initiative.key+"; type="+initiative.issuetype)
             epics = []
-            for link in initiative.jiraIssue.fields.issuelinks:
+            for link in initiative.issuelinks:
                 if hasattr(link, "outwardIssue"):
                     outwardIssue = self.persist.load(key=link.outwardIssue.key)
-                    if str(outwardIssue.jiraIssue.fields.issuetype) == 'Epic':
+                    if outwardIssue.issuetype == 'Epic':
                         # Get the issues for the epic
                         #epicIssues = self.jira.search_issues("'Epic Link'="+outwardIssue.jiraIssue.key)
                         epicDataIssues = []
@@ -123,7 +123,7 @@ class PortfolioService(object):
                         epicData.issues = epicDataIssues
                         epics.append(epicData)
                     else:
-                        print("type = '%s'" % (outwardIssue.fields.issuetype,))
+                        print("type = '%s'" % (outwardIssue.issuetype,))
                 if hasattr(link, "inwardIssue"):
                     inwardIssue = link.inwardIssue
                     print("\tInward: " + inwardIssue.key)
@@ -172,16 +172,16 @@ class Persist(object):
     def store(self, objectData):
         conn = self.config.getDatabase()
         c = conn.cursor()
-        print("store "+objectData.jiraIssue.key+"; type="+objectData.getType()+"; estimate="+str(objectData.jiraIssue.fields.timeestimate)+"; struct="+str(objectData.getStructure()))
-        #print('updated type=%s' % (type(objectData.jiraIssue.fields.updated),))
+        print("store %s; type=%s; estimate=%s; structure=%s" % (objectData.key,objectData.getType(),objectData.timeestimate, objectData.getStructure()))
+        #print('updated type=%s' % (type(objectData.updated),))
         c.execute('''INSERT OR REPLACE INTO issues VALUES (?,?,?,?,?)''',
                   (
-                      objectData.jiraIssue.key,
-                      objectData.jiraIssue.fields.updated,
+                      objectData.key,
+                      objectData.updated,
                       objectData.getType(),                      
                       str(objectData),
-                      pickle.dumps(objectData.jiraIssue.raw)))
-        print('inserted %s' % (objectData.jiraIssue.key,))
+                      pickle.dumps(objectData.raw)))
+        print('inserted %s' % (objectData.key,))
         #c.execute('''select * from issues''')
         #res = c.fetchone()
         #raw_issue = pickle.loads(res[2])
@@ -218,7 +218,7 @@ class Persist(object):
                         for k in d['children']:
                             children.append(self.load(key=k))
                     else:
-                        print("No 'children' in dictionary"+str(d))
+                        print("No 'children' in dictionary %s" % d)
                     result = InitiativeData(jiraIssue=x,epics=children)                   
                 elif issuetype == 'Epic':
                     print("Loading epic: "+issuestructure)
@@ -228,7 +228,7 @@ class Persist(object):
                         for k in d['children']:
                             children.append(self.load(key=k))
                     else:
-                        print("No 'children' in dictionary"+str(d))
+                        print("No 'children' in dictionary %s" %d)
                     result = EpicData(jiraIssue=x,issues=children)
                 else:
                     result = IssueData(jiraIssue=x)
@@ -254,7 +254,7 @@ class Persist(object):
                     for k in d['children']:
                         children.append(self.load(key=k))
                 else:
-                    print("No 'children' in dictionary"+str(d)+" for initiatve"+key)
+                    print("No 'children' in dictionary %s for initiative %s" % (d, key))
                 initiatives.append(InitiativeData(jiraIssue=x,epics=children))
             return initiatives              
 

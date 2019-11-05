@@ -1,18 +1,19 @@
 {% extends "layout.html" %}
 {% block content %}
-  <h3>Detail page for {{issue.jiraIssue.fields.summary}}</h3>
+  <h3>Detail page for {{issue.summary}}</h3>
   <br>
 {% for post in posts %}
                 <div class="post">
                         <div class="title">
 {% if post.link %}
-                                <h2><a href="portfolio.html">{{ post.title }}</a></h2>
+                                <h2><a href="portfolio.html" id="{{post.title}}">{{ post.title }}</a></h2>
 {% else %}
-                                <h2>{{ post.title }}</h2>
+                                <h2><a id="{{post.title}}">{{ post.title }}</a></h2>
 {% endif %}
 {% if post.subtitle %}
                                 <p><small>.<a href="http://templated.co" rel="nofollow">y</a></small></p>
 {% endif %}
+								<p><small><a href="#top">to top</a></small></p>
                         </div>
                         <div class="entry">
                                 {{ post.post }}
@@ -21,7 +22,5 @@
                         <p class="links"> <a href="{{ post.morelink }}" class="more">Read More</a></p>
 {% endif %}
                 </div>
-
-        </div>
 {% endfor %}
 {% endblock %}

@@ -25,7 +25,7 @@ Description: A Web 2.0 design with fluid width suitable for blogs and small webs
 <!-- start header -->
 <div id="header">
         <div id="logo">
-                <h1><a href="portfolio.html">sweep</a></h1>
+                <h1><a href="portfolio.html" id="top">sweep</a></h1>
                 <p><span>jira analysis reporting</span></p>
         </div>
         <div id="menu">
@@ -46,6 +46,7 @@ Description: A Web 2.0 design with fluid width suitable for blogs and small webs
         <!-- start sidebar -->
         <div id="sidebar">
                 <ul>
+<!--
                         <li id="search" style="background: none;">
                                 <form id="searchform" method="get" action="">
                                         <div>
@@ -55,13 +56,17 @@ Description: A Web 2.0 design with fluid width suitable for blogs and small webs
                                         </div>
                                 </form>
                         </li>
+-->
+{% if posts: %}
                         <li id="categories">
-                                <h2>Categories</h2>
+                                <h2>Sections</h2>
                                 <ul>
-                                        <li><a href="#">Lorem Ipsum</a> (1) </li>
-                                        <li><a href="#">Uncategorized</a> (4) </li>
+{% for post in posts %}
+                                        <li><a href="#{{ post.title }}">{{ post.title }}</a></li>
+{% endfor %}
                                 </ul>
                         </li>
+{% endif %}
                 </ul>
         </div>
         <!-- end sidebar -->

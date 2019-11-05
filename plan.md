@@ -5,17 +5,18 @@
 Include core elements of the reporting system for a single Initiative.
 
 Elements of the Proof of Concept:
-* Connect to Jira
-* Retrieve Initiatives from Jira
-* Generate a report with an overview of Initiatives
-* Generate a report with detailed data per Initiative
-* Retrieve Issues for Initiative
-* Cache issues in SQL database
-* Include overview of issues in detailed data per Initiative
-* Include dependencies for Initiatives (GD)
-* Include dependencies for Issues
-* Create burn up chart with timeline displaying open and closed issues per Initiative
-* Create pie chart with issue types per initiative
+- [x] Connect to Jira
+- [x] Retrieve Initiatives from Jira
+- [x] Generate a report with an overview of Initiatives
+- [x] Generate a report with detailed data per Initiative
+- [x] Retrieve Issues for Initiative
+- [x] Cache issues in SQL database
+- [x] Include overview of issues in detailed data per Initiative
+- [x] Include dependencies for Initiatives (GD)
+- [x] Include dependencies for Issues
+- [x] Create burn up chart with timeline displaying open and closed issues per Initiative
+- [x] Create pie chart with issue types per initiative
+- [x] Create cumulative flow chart per Initiative
 
 Jira projects:
 * PORT - portfolio, including Initiatives and Sagas (where a Saga is an Epic of Initiatives)

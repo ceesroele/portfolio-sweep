@@ -1,8 +1,21 @@
-INSTALL
+# Install
 
 Sweep uses the following python extras:
-* pprint
 * sqlite3
 * jira-python
+* atlassian
 * jinja2
 * flask
+* plotly
+
+You can install them with: pip install <name>
+
+# Run
+
+    $ python3 Start.py
+
+or
+
+    $ python3
+    >>> import Start
+    >>> Start.main()

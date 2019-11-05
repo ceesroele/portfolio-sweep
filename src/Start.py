@@ -10,14 +10,17 @@ from service.PortfolioService import PortfolioService
 from service.ReportService import ReportService
 import datetime
 
-from Config import Config
+import Config
 
-if __name__ == '__main__':
+def main():
     start = datetime.datetime.now()
-    config = Config('../../sweep.yaml')
+    # Read configuration and set 'config' to a global in the Config module so it is available to all of the application
+    config = Config.Config('../../sweep.yaml')
     print("Portfolio: "+config.getPortfolio())
     print("Loading mode: "+config.loadingMode())
     config.loadFields()
+    Config.config = config
+    
     portfolio = PortfolioService(config)
     report = ReportService(config)
     portfolioData = portfolio.loadPortfolio()
@@ -44,4 +47,6 @@ if __name__ == '__main__':
     
     end = datetime.datetime.now()
     print("\nRuntime %s" % (end-start,))
-        
+
+if __name__ == '__main__':
+    main()

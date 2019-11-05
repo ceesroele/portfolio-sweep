@@ -11,6 +11,9 @@ import atlassian
 import datetime
 import pickle
 
+# We set the variable 'config' as a global inside this module, so it can be read from the entire application
+config = None
+
 class Config(object):
     '''
     classdocs
@@ -72,7 +75,6 @@ class Config(object):
     def getPortfolio(self):
         return self.config['portfolio']['name']
     def getFieldType(self, key):
-        print(self.fields[key])
         return self.fields[key]['schema']['type']
     def getReportDirectory(self):
         return self.config['reports']['directory']
@@ -128,8 +130,8 @@ class PersistConfig(object):
             updated = datetime.datetime.now()
         conn = self.config.getDatabase()
         c = conn.cursor()
-        #print("store "+objectData.jiraIssue.key+"; type="+objectData.getType()+"; estimate="+str(objectData.jiraIssue.fields.timeestimate)+"; struct="+str(objectData.getStructure()))
-        #print('updated type=%s' % (type(objectData.jiraIssue.fields.updated),))
+        #print("store "+objectData.key+"; type="+objectData.getType()+"; estimate="+str(objectData.timeestimate)+"; struct="+str(objectData.getStructure()))
+        #print('updated type=%s' % (type(objectData.updated),))
         c.execute('''INSERT OR REPLACE INTO configdata VALUES (?,?,?)''', (
             key,
             updated,
