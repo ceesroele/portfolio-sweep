@@ -10,6 +10,12 @@ Sweep uses the following python extras:
 
 You can install them with: pip install <name>
 
+# Configure
+
+1. Copy ./src/sweep.yaml to ./src/../../sweep.yaml
+2. Modify the settings in sweep.yaml
+
+
 # Run
 
     $ python3 Start.py
