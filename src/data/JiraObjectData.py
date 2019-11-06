@@ -247,7 +247,7 @@ class IssueData(JiraObjectData):
         
 def jira2DataObject(jiraIssue, level=None):
     result = None
-    jiraType = jiraIssue.issuetype
+    jiraType = str(jiraIssue.fields.issuetype)
     if jiraType == 'Epic':
         result = EpicData(jiraIssue=jiraIssue)
     else:
