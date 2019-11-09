@@ -24,6 +24,7 @@ class Config(object):
         '''
         Read configuration file at relative position
         '''
+        global config
         script_dir = os.path.dirname(__file__) #<-- absolute dir the script is in
         abs_file_path = os.path.join(script_dir, filename)
         with open(abs_file_path, 'r') as stream:
@@ -32,6 +33,13 @@ class Config(object):
         self.configfile = abs_file_path
         self.config = config
         self.persist = PersistConfig(self)
+        print(config['plugins']['sections'])
+    def getPlugins(self):
+        d = self.config['plugins']['sections']
+        list = []
+        for k in d.keys():
+            list.append(dict(cname=k, title=d[k]['title']))
+        return list
     def getJira(self):
         '''
         jira client: https://pypi.org/project/jira/

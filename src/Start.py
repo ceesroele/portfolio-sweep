@@ -16,14 +16,13 @@ import Config
 def main():
     start = datetime.datetime.now()
     # Read configuration and set 'config' to a global in the Config module so it is available to all of the application
-    config = Config.Config('../../sweep.yaml')
-    print("Portfolio: "+config.getPortfolio())
-    print("Loading mode: "+config.loadingMode())
-    config.loadFields()
-    Config.config = config
+    Config.config = Config.Config('../../sweep.yaml')
+    print("Portfolio: "+Config.config.getPortfolio())
+    print("Loading mode: "+Config.config.loadingMode())
+    Config.config.loadFields()
     
-    portfolio = PortfolioService(config)
-    report = ReportService(config)
+    portfolio = PortfolioService(Config.config)
+    report = ReportService(Config.config)
     portfolioData = portfolio.loadPortfolio()
 
     print("--- portfolio ---")

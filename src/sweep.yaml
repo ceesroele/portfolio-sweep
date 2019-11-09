@@ -15,3 +15,10 @@ loading:
 
 reports:
   directory: <your directory>
+
+plugins:
+  sections:
+    <classname of Plugin A>:
+      title: <title of chart A>
+    <classname of Plugin B>:
+      title: <title of chart B>
