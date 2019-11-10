@@ -9,6 +9,7 @@ import plotly.offline
 from data.JiraObjectData import jiraLink, jiraDate2Datetime
 from service.BucketService import TimeBucket, Period
 import datetime
+import traceback
 
 class AbstractPlugin(object):
     '''
@@ -21,7 +22,13 @@ class AbstractPlugin(object):
     
     def go(self):
         start = datetime.datetime.now()
-        res = self.goDoit()
+        res = None
+        try:
+            res = self.goDoit()
+        except Exception as err:
+            print("%s" % (err,))
+            traceback.print_tb(err.__traceback__)
+            print("Ignoring this exception and continuing")
         end = datetime.datetime.now()
         print("\nRuntime for '%s': %s" % (self.title, end-start))
         return res
@@ -90,25 +97,29 @@ class AbstractPlugin(object):
             maxvalue = 0
             isFirst = True
             for (x,y,label) in zip(xs,cumulativeys,labels):
-                maxvalue = max(maxvalue, max(y)+1)
-                if isFirst:
-                    fill = 'tozeroy'
-                    isFirst = False
-                else:
-                    fill = 'tonexty'
-                fig.add_trace(go.Scatter(
-                    x=x,
-                    y=y,
-                    name=label,
-                    fill=fill
-                    ))
+                if x and y:
+                    print(x)
+                    print(y)
+                    print(label)
+                    maxvalue = max(maxvalue, max(y)+1)
+                    if isFirst:
+                        fill = 'tozeroy'
+                        isFirst = False
+                    else:
+                        fill = 'tonexty'
+                        fig.add_trace(go.Scatter(
+                            x=x,
+                            y=y,
+                            name=label,
+                            fill=fill
+                            ))
                 
-            fig.update_layout(yaxis_range=[0, maxvalue], showlegend=True)
-            presult = plotly.offline.plot(fig, config={"displayModeBar": False},
+                        fig.update_layout(yaxis_range=[0, maxvalue], showlegend=True)
+                        presult = plotly.offline.plot(fig, config={"displayModeBar": False},
                                           show_link=False,
                                           include_plotlyjs=False,
                                           output_type='div')
-            return presult
+                        return presult
 
     def createMultiLineMap(self,xs=[],ys=[],labels=[], title=None):
         '''
@@ -294,41 +305,43 @@ class BurnupPlugin(AbstractPlugin):
                     if closingDate:
                         closing_dates.append(jiraDate2Datetime(closingDate))
 
-        period = Period()
-        results = period.analyse(all_issues)
+        if all_issues:
+            period = Period()
+            results = period.analyse(all_issues)
                 
-        bucket = TimeBucket(Config.config, all_issues)
-        bucket.allocate(None)
-        linedict = bucket.cumulative(results)
+            bucket = TimeBucket(Config.config, all_issues)
+            bucket.allocate(None)
+            linedict = bucket.cumulative(results)
         
-        xs = []
-        ys = []
-        labels = []
-        x1 = list(linedict.keys())
-        x1.sort()
-        y1 = []
-        for k in x1:
-            y1.append(linedict[k])
-        if x1 and y1:
-            xs.append(x1)
-            ys.append(y1)
-            labels.append("created")     
+            xs = []
+            ys = []
+            labels = []
+            x1 = list(linedict.keys())
+            x1.sort()
+            y1 = []
+            for k in x1:
+                y1.append(linedict[k])
+            if x1 and y1:
+                xs.append(x1)
+                ys.append(y1)
+                labels.append("created")     
         
-        # Create a second line map for closed issues
-        if closing_dates:
-            closing_dates.sort()
-            res = period.analyse_dates(closing_dates)
-            nextlinedict = bucket.cumulative(res)
-            x2 = list(nextlinedict.keys())
-            y2 = []
-            for k in x2:
-                y2.append(nextlinedict[k])
-            xs.append(x2)
-            ys.append(y2)
-            labels.append("closed")
+            # Create a second line map for closed issues
+            if closing_dates:
+                closing_dates.sort()
+                res = period.analyse_dates(closing_dates)
+                nextlinedict = bucket.cumulative(res)
+                x2 = list(nextlinedict.keys())
+                y2 = []
+                for k in x2:
+                    y2.append(nextlinedict[k])
+                xs.append(x2)
+                ys.append(y2)
+                labels.append("closed")
         
-        line_map = self.createMultiLineMap(xs=xs, ys=ys, labels=labels, title=self.title)
-        return dict(title=self.title, post=line_map)
+            line_map = self.createMultiLineMap(xs=xs, ys=ys, labels=labels, title=self.title)
+            return dict(title=self.title, post=line_map)
+
 
 class CumulativeFlowPlugin(AbstractPlugin):
     def goDoit(self):

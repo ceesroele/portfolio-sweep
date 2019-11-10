@@ -98,6 +98,8 @@ class Period(object):
         (start,end) = self.interval(issues)
         res = {}
         periodlist = self.generate(start,end)
+        if not periodlist:
+            print("GOT NO PERIODLIST for (%s,%s)" % (start,end))
         for iss in issues:
             md = self.periodMatch(iss.created, periodlist)
             #print("created %s -> %s" % (created,md))
