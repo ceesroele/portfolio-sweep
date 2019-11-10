@@ -5,7 +5,7 @@
 ### First iteration
 
 1. General application
-   - [ ] Rewrite generation of individual charts as plugins
+   - [x] Rewrite generation of individual charts as plugins
    - [ ] Make configurable what charts are displayed in a report
    - [ ] Make template location configurable (so all can create their own "branded" templates)
    - [ ] Create a separate configuration for development (minimize everything that is not under current development)

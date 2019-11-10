@@ -24,7 +24,6 @@ class Config(object):
         '''
         Read configuration file at relative position
         '''
-        global config
         script_dir = os.path.dirname(__file__) #<-- absolute dir the script is in
         abs_file_path = os.path.join(script_dir, filename)
         with open(abs_file_path, 'r') as stream:
@@ -33,13 +32,40 @@ class Config(object):
         self.configfile = abs_file_path
         self.config = config
         self.persist = PersistConfig(self)
-        print(config['plugins']['sections'])
+        self.loadFields()
+        self.console()
+    def console(self):
+        '''
+        Write configuration to console.
+        '''
+        inputmode = self.loadingMode()
+        if inputmode == 'jira':
+            inputmode += " (" + self.config['jira']['server']+")"
+        elif inputmode == 'database':
+            inputmode += " (SQLite3 file: "+self.getDatabasePath()+")"
+
+        print(
+'''Configuration:
+* Reading configuration from: %s
+* Portfolio: %s
+* Input mode: %s
+* Loaded fields: %s
+* Loaded plugins: %s
+* Report directory: %s
+''' % (
+    self.configfile,
+    self.getPortfolio(),
+    inputmode,
+    ", ".join(self.fields.keys()),
+    ", ".join(self.config['plugins']['sections'].keys()),
+    self.getReportDirectory()
+    ))
     def getPlugins(self):
         d = self.config['plugins']['sections']
-        list = []
+        lst = []
         for k in d.keys():
-            list.append(dict(cname=k, title=d[k]['title']))
-        return list
+            lst.append(dict(cname=k, title=d[k]['title']))
+        return lst
     def getJira(self):
         '''
         jira client: https://pypi.org/project/jira/
@@ -57,17 +83,17 @@ class Config(object):
             url=self.config['jira']['server'],
             username=self.config['jira']['username'],
             password=self.config['jira']['token']
-            )   
+            )
+    def getDatabasePath(self):
+        filename = self.config['database']['filename']
+        path = self.config['database']['path']
+        return os.path.join(path, filename)
     def getDatabase(self):
         '''
         Get a database connection
         '''
-        filename = self.config['database']['filename']
-        path = self.config['database']['path']
-        db = os.path.join(path, filename)
-        return sqlite3.connect(db)
+        return sqlite3.connect(self.getDatabasePath())
     def loadFields(self):
-        start = datetime.datetime.now()
         if self.loadingMode() == 'database':
             self.fields = self.persist.loadConfig("fields")
         else:
@@ -76,7 +102,6 @@ class Config(object):
             for f in all_fields:
                 self.fields[f['id']] = f
             self.persist.saveConfig(key="fields", updated=None, configdata=self.fields)
-        print("Loading field definitions in: %s" % (datetime.datetime.now()-start,))
     def loadingMode(self):
         loadingMode = self.config['loading']['mode']
         return loadingMode

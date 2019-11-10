@@ -17,9 +17,6 @@ def main():
     start = datetime.datetime.now()
     # Read configuration and set 'config' to a global in the Config module so it is available to all of the application
     Config.config = Config.Config('../../sweep.yaml')
-    print("Portfolio: "+Config.config.getPortfolio())
-    print("Loading mode: "+Config.config.loadingMode())
-    Config.config.loadFields()
     
     portfolio = PortfolioService(Config.config)
     report = ReportService(Config.config)
