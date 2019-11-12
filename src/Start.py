@@ -10,13 +10,18 @@ from service.PortfolioService import PortfolioService
 from service.ReportService import ReportService
  
 import datetime
+import argparse
 
 import Config
 
-def main():
+DEFAULT_CONFIGURATION_FILE = "../../sweep.yaml"
+
+def main(**kwargs):
+    print("Using configuration file: %s" % (kwargs['config'],))
+    print("config = %s" % (kwargs['config']))
     start = datetime.datetime.now()
     # Read configuration and set 'config' to a global in the Config module so it is available to all of the application
-    Config.config = Config.Config('../../sweep.yaml')
+    Config.config = Config.Config(kwargs['config'])
     
     portfolio = PortfolioService(Config.config)
     report = ReportService(Config.config)
@@ -46,4 +51,11 @@ def main():
     print("\nRuntime %s" % (end-start,))
 
 if __name__ == '__main__':
-    main()
+    parser = argparse.ArgumentParser(description='Sweep Portfolio data from Jira')
+    parser.add_argument('--config', '-c',
+                        default=DEFAULT_CONFIGURATION_FILE,
+                        help='Location of configuration file'
+                        )
+
+    args = parser.parse_args()
+    main(**args.__dict__)
