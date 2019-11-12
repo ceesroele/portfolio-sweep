@@ -17,11 +17,14 @@ import Config
 DEFAULT_CONFIGURATION_FILE = "../../sweep.yaml"
 
 def main(**kwargs):
-    print("Using configuration file: %s" % (kwargs['config'],))
-    print("config = %s" % (kwargs['config']))
+    default_args = getParser().parse_args()
+    args = default_args.__dict__
+    args.update(kwargs)
+    
     start = datetime.datetime.now()
     # Read configuration and set 'config' to a global in the Config module so it is available to all of the application
-    Config.config = Config.Config(kwargs['config'])
+    Config.app = Config.App(verbosity=args['verbose'])
+    Config.config = Config.Config(args['config'])
     
     portfolio = PortfolioService(Config.config)
     report = ReportService(Config.config)
@@ -50,12 +53,20 @@ def main(**kwargs):
     end = datetime.datetime.now()
     print("\nRuntime %s" % (end-start,))
 
-if __name__ == '__main__':
+def getParser():
+    '''
+    Create a parser for command line configuration parameters
+    '''
     parser = argparse.ArgumentParser(description='Sweep Portfolio data from Jira')
     parser.add_argument('--config', '-c',
                         default=DEFAULT_CONFIGURATION_FILE,
                         help='Location of configuration file'
                         )
+    parser.add_argument("--verbose", "-v", help="Increase output verbosity",
+                    choices=[0,1,2], type=int, default=0)
+    return parser
 
-    args = parser.parse_args()
+if __name__ == '__main__':
+    args = getParser().parse_args()
+    print(args)
     main(**args.__dict__)

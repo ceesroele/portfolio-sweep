@@ -13,12 +13,12 @@ import pickle
 
 # We set the variable 'config' as a global inside this module, so it can be read from the entire application
 config = None
+app = None
 
 class Config(object):
     '''
     classdocs
     '''
-
 
     def __init__(self, filename):
         '''
@@ -33,33 +33,25 @@ class Config(object):
         self.config = config
         self.persist = PersistConfig(self)
         self.loadFields()
-        self.console()
-    def console(self):
+        self.printConfiguration()
+    def printConfiguration(self):
         '''
         Write configuration to console.
         '''
+        global app
         inputmode = self.loadingMode()
         if inputmode == 'jira':
             inputmode += " (" + self.config['jira']['server']+")"
         elif inputmode == 'database':
             inputmode += " (SQLite3 file: "+self.getDatabasePath()+")"
 
-        print(
-'''Configuration:
-* Reading configuration from: %s
-* Portfolio: %s
-* Input mode: %s
-* Loaded fields: %s
-* Loaded plugins: %s
-* Report directory: %s
-''' % (
-    self.configfile,
-    self.getPortfolio(),
-    inputmode,
-    ", ".join(self.fields.keys()),
-    ", ".join(self.config['plugins']['sections'].keys()),
-    self.getReportDirectory()
-    ))
+        app.console("Configuration:", 0)
+        app.console("* Reading configuration from: %s" % (self.configfile,), 0)
+        app.console("* Portfolio: %s" % (self.getPortfolio(),), 0)
+        app.console("* Input mode: %s" % (inputmode,), 0)
+        app.console("* Loaded fields: %s" % (", ".join(self.fields.keys()),), 2)
+        app.console("* Loaded plugins: %s" % ", ".join(self.config['plugins']['sections'].keys()), 0)
+        app.console("* Report directory: %s" % (self.getReportDirectory(),), 0)
     def getPlugins(self):
         d = self.config['plugins']['sections']
         lst = []
@@ -138,7 +130,6 @@ class PersistConfig(object):
         self.config = config
         c.close()
         conn.close()
-
     def loadConfig(self,key=None):
         conn = self.config.getDatabase()
         c = conn.cursor()
@@ -175,6 +166,19 @@ class PersistConfig(object):
         c.close()
         conn.close()
 
+class App(object):
+    '''
+    Application singleton.
+    '''
+    def __init__(self, verbosity=0):
+        self.verbosity = verbosity
+    def console(self,message,level=0):
+        '''
+        Log to console, depending on verbosity
+        '''
+        if level <= self.verbosity:
+            print(message)
+    
 
 if __name__ == '__main__':
     c = Config(None)
