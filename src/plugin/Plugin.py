@@ -92,15 +92,11 @@ class AbstractPlugin(object):
             fig = go.Figure()
             if title:
                 fig.update_layout(title_text=title)
-            
             cumulativeys = makecumulative(ys)
             maxvalue = 0
             isFirst = True
             for (x,y,label) in zip(xs,cumulativeys,labels):
                 if x and y:
-                    print(x)
-                    print(y)
-                    print(label)
                     maxvalue = max(maxvalue, max(y)+1)
                     if isFirst:
                         fill = 'tozeroy'
@@ -114,12 +110,12 @@ class AbstractPlugin(object):
                             fill=fill
                             ))
                 
-                        fig.update_layout(yaxis_range=[0, maxvalue], showlegend=True)
-                        presult = plotly.offline.plot(fig, config={"displayModeBar": False},
+            fig.update_layout(yaxis_range=[0, maxvalue], showlegend=True)
+            presult = plotly.offline.plot(fig, config={"displayModeBar": False},
                                           show_link=False,
                                           include_plotlyjs=False,
                                           output_type='div')
-                        return presult
+            return presult
 
     def createMultiLineMap(self,xs=[],ys=[],labels=[], title=None):
         '''
