@@ -62,7 +62,7 @@ class Period(object):
         Generate list of periods (dates) based on start date and end date
         '''
         lst = []
-        for i in range(int((end - start).days)):
+        for i in range(int((end - start).days)+1):
             # code below for excluding weekends, but I work during weekends, so leaving it out now
             #nextDate = start + datetime.timedelta(i)
             #if nextDate.weekday() not in (5, 6):
