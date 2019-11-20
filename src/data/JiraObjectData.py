@@ -76,25 +76,24 @@ class JiraObjectData(object):
             return None
         else:
             changelog = self.changelog
-            curStatus = None
-            lastStatus = None
+            curstatus = None
             for history in changelog.histories:
                 for item in history.items:
                     if item.field == 'status':
-                        if d < jiraDate2Datetime(history.created):
-                            curStatus = item.toString
-                        else:
-                            pass
-                            #return curStatus
-            if curStatus is None:
-                curStatus = self.status
-            return curStatus
+                        if d <= jiraDate2Datetime(history.created):
+                            curstatus = item.toString
+            # If the status is not mentioned in the changelog,
+            # it has been in the current status at any date after creation
+            if curstatus is None:
+                curstatus = self.status
+            return curstatus
             
-    def jiraLink(self,title=None):
+    def jiraLink(self, title=None):
         '''
         Create an HTML link to the issue in Jira.
         '''
-        return jiraLink(self.key,title=title)
+        return jiraLink(self.key, title=title)
+
     def __getattr__(self, name):
         '''
         If no attribute is present, read it first from the encapsulated _jiraIssue, then from _jiraIssue.fields.
@@ -183,18 +182,24 @@ class InitiativeData(JiraObjectData):
         super().__init__(jiraIssue=jiraIssue)
     def traverse(self):
         return self.epics
-    def issues(self):
+
+    def traverse_recursive(self, exclude=None, withepics=False):
         '''
-        Deep traversal to find and return all issues under the Initiative
+        Traverse over underlying issues recursively. Excludes epics.
+        :param exclude: exclusionfunction(issue) - returns true if an issue should be *excluded* from the result
+             e.g. to exclude tasks: exclusionfunction=lambda x: str(x.issuetype) == "Task"
+        :param withepics: if True, include epics in the result
+        :return: all issues found when traversing the tree of issues
         '''
-        res = []
-        if self.epics:
-            for e in self.epics:
-                res.append(e)
-                if e.traverse():
-                    for iss in e.traverse():
-                        res.append(iss)
-        return res
+        all_issues = []
+        for epic in self.traverse():
+            if withepics:
+                all_issues.append(epic)
+            for iss in epic.traverse():
+                if not exclude or not(exclude(iss)):
+                    all_issues.append(iss)
+        return all_issues
+
     def __str__(self):
         if self.issuetype == 'Epic':
             # saga

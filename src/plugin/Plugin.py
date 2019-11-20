@@ -81,7 +81,7 @@ class AbstractPlugin(object):
                                           output_type='div')
         return presult
     
-    def createAreaLineChart(self,xs=[],ys=[],labels=[], title=None):
+    def createAreaLineChart(self, xs=[], ys=[], labels=[], title=None):
         '''
         Create line chart with multiple lines
         xs, ys, and labels are lists of lists, each representing one line
@@ -92,24 +92,25 @@ class AbstractPlugin(object):
             fig = go.Figure()
             if title:
                 fig.update_layout(title_text=title)
-            cumulativeys = makecumulative(ys)
+            cumulative_ys = make_cumulative(ys)
             maxvalue = 0
-            isFirst = True
-            for (x,y,label) in zip(xs,cumulativeys,labels):
+            is_first = True
+            for (x, y, label) in zip(xs, cumulative_ys, labels):
                 if x and y:
+                    print("chart: %s: %s" % (label, y))
                     maxvalue = max(maxvalue, max(y)+1)
-                    if isFirst:
+                    if is_first:
                         fill = 'tozeroy'
-                        isFirst = False
+                        is_first = False
                     else:
                         fill = 'tonexty'
-                        fig.add_trace(go.Scatter(
-                            x=x,
-                            y=y,
-                            name=label,
-                            fill=fill
-                            ))
-                
+                    fig.add_trace(go.Scatter(
+                        x=x,
+                        y=y,
+                        name=label,
+                        fill=fill
+                        ))
+
             fig.update_layout(yaxis_range=[0, maxvalue], showlegend=True)
             presult = plotly.offline.plot(fig, config={"displayModeBar": False},
                                           show_link=False,
@@ -130,7 +131,7 @@ class AbstractPlugin(object):
                 fig.update_layout(title_text=title)
             
             maxvalue = 0
-            for (x,y,label) in zip(xs,ys,labels):
+            for (x, y, label) in zip(xs, ys, labels):
                 maxvalue = max(maxvalue, max(y)+1) 
                 fig.add_trace(go.Scatter(
                     x=x,
@@ -199,7 +200,7 @@ class IssuesPlugin(AbstractPlugin):
         tps = []
         sts = []
         ils = []
-        for iss in self.initiative.issues():
+        for iss in self.initiative.traverse_recursive():
             ks.append(iss.jiraLink())
             vs.append(iss.summary)
             tps.append(iss.issuetype)
@@ -231,12 +232,8 @@ class IssuesPlugin(AbstractPlugin):
 class IssueTypesPlugin(AbstractPlugin):
     def goDoit(self):
         issuetypes = {}
-        for epic in self.initiative.traverse():
-            if ("Epic" in issuetypes.keys()):
-                issuetypes["Epic"] = issuetypes["Epic"] + 1
-            else:
-                issuetypes["Epic"] = 1
-            for iss in epic.traverse():
+        all_issues = self.initiative.traverse_recursive(withepics=True)
+        for iss in all_issues:
                 itype = iss.issuetype
                 if itype in issuetypes.keys():
                     issuetypes[itype] = issuetypes[itype] + 1
@@ -249,8 +246,10 @@ class IssueTypesPlugin(AbstractPlugin):
     
 
 class TreeMapPlugin(AbstractPlugin):
+    '''
+    Create a treemap with the structure of the initiative
+    '''
     def goDoit(self):
-                # Create a treemap with the structure of the initiative
         ls = [self.initiative.key]
         ps = [""]
         vs = [30]
@@ -282,73 +281,54 @@ class TreeMapPlugin(AbstractPlugin):
     
 class BurnupPlugin(AbstractPlugin):
     def goDoit(self):
-        all_issues = []
+        all_issues = self.initiative.traverse_recursive(lambda x: str(x.issuetype) == "Task")
         closing_dates = []
-        for epic in self.initiative.traverse():
-            for iss in epic.traverse():
-                all_issues.append(iss)
-                changelog = iss.changelog
-
-                for history in changelog.histories:
-                    for item in history.items:
-                        if item.field == 'status':
-                            #print('Date:' + history.created + ' From:' + item.fromString + ' To:' + item.toString)
-                            pass
-                #print("Status %s" % (iss.status))
-                if iss.status == 'Done':
-                    #print("%s was closed on %s" % (iss.key, iss.statusChangedTo('Done')))
-                    closingDate = iss.statusChangedTo('Done')
-                    if closingDate:
-                        closing_dates.append(jiraDate2Datetime(closingDate))
 
         if all_issues:
-            period = Period()
-            results = period.analyse(all_issues)
-                
+            # FIXME: "bucket" currently does nothing other than make 'cumulative' function available
             bucket = TimeBucket(Config.config, all_issues)
-            bucket.allocate(None)
-            linedict = bucket.cumulative(results)
-        
             xs = []
             ys = []
-            labels = []
+
+            period = Period()
+            created_match = lambda x: x.created
+            created_results = period.analyse_monotonic(all_issues, created_match)
+            linedict = bucket.cumulative(created_results)
             x1 = list(linedict.keys())
-            x1.sort()
-            y1 = []
-            for k in x1:
-                y1.append(linedict[k])
-            if x1 and y1:
-                xs.append(x1)
-                ys.append(y1)
-                labels.append("created")     
-        
+            y1 = list(linedict.values())
+            xs.append(x1)
+            ys.append(y1)
+            label1 = "created"
+
+            # function to determine the date at which the issue is closed
+            def closingmatch(issue):
+                closingDate = issue.statusChangedTo('Done')
+                if closingDate:
+                    return jiraDate2Datetime(closingDate)
+
+            closing_results = period.analyse_monotonic(all_issues, closingmatch)
             # Create a second line map for closed issues
-            if closing_dates:
-                closing_dates.sort()
-                res = period.analyse_dates(closing_dates)
-                nextlinedict = bucket.cumulative(res)
+            label2 = "closed"
+            if closing_results:
+                nextlinedict = bucket.cumulative(closing_results)
+                # in python, keys() and values() for a dictionary come in the same order
                 x2 = list(nextlinedict.keys())
-                y2 = []
-                for k in x2:
-                    y2.append(nextlinedict[k])
+                y2 = list(nextlinedict.values())
                 xs.append(x2)
                 ys.append(y2)
-                labels.append("closed")
-        
-            line_map = self.createMultiLineMap(xs=xs, ys=ys, labels=labels, title=self.title)
+
+            line_map = self.createMultiLineMap(xs=xs, ys=ys, labels=[label1, label2], title=self.title)
             return dict(title=self.title, post=line_map)
 
 
 class CumulativeFlowPlugin(AbstractPlugin):
     def goDoit(self):
-                # basic traversal
-        all_issues = []
-        for epic in self.initiative.traverse():
-            for iss in epic.traverse():
-                all_issues.append(iss)
+        # basic traversal
+        all_issues = self.initiative.traverse_recursive()
 
+        bucket = TimeBucket(Config.config, all_issues)
         period = Period()
-        
+
         # cumulative flow diagram
         lst = period.datelist(all_issues)
         cflowdata = {}
@@ -361,27 +341,29 @@ class CumulativeFlowPlugin(AbstractPlugin):
                         cflowdata[d][st] = 1
                     else:
                         cflowdata[d][st] = cflowdata[d][st] + 1
-            
-        timelinedates = list(cflowdata.keys())
-        timelinedates.sort()
-        backlog = []
-        selectedfordevelopment = []
-        inprogress = []
-        done = []
-        labels = ['Backlog', 'Selected for Development', 'In Progress', 'Done']
-        xs = [timelinedates, timelinedates, timelinedates, timelinedates]
-        for d in timelinedates:
-            # hardcoded statuses
-            backlog.append(0 if not 'Backlog' in cflowdata[d] else cflowdata[d]['Backlog'])
-            selectedfordevelopment.append(0 if not 'Selected for Development' in cflowdata[d] else cflowdata[d]['Selected for Development'])
-            inprogress.append(0 if not 'In Progress' in cflowdata[d] else cflowdata[d]['In Progress'])
-            done.append(0 if not 'Done' in cflowdata[d] else cflowdata[d]['Done'])
-        cumulativeflowchart = self.createAreaLineChart(xs=xs, ys=[backlog,selectedfordevelopment,inprogress,done], labels=labels, title="Cumulative Flow")
-        res = dict(title=self.title, post=cumulativeflowchart)
+
+        date_list = period.datelist(all_issues)
+
+        def group_function(issue, d):
+            return issue.statusAtDate(d)
+
+        (allgroups, cflowdata) = period.analyse_group(all_issues, date_list, group_function)
+        newlabels = []
+        xs = []
+        ys = []
+        for g in allgroups:
+            newlabels.append(g)
+            xs.append(datelist)
+            res_for_group = []
+            for d in datelist:
+                res_for_group.append(cflowdata[d][g])
+            ys.append(res_for_group)
+        cumulative_flow_chart = self.createAreaLineChart(xs=xs, ys=ys,
+                                                       labels=newlabels, title="Cumulative Flow")
+        res = dict(title=self.title, post=cumulative_flow_chart)
         return res
 
-
-def makecumulative(lst):
+def make_cumulative(lst):
     '''
     Make values of lists that are part of the list of lists cumulative.
     '''

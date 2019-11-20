@@ -51,7 +51,7 @@ class ReportService(object):
         plugin_classes = Config.config.getPlugins()
         module = importlib.import_module(module_name)
         for p in plugin_classes:
-            cname= p['cname']
+            cname = p['cname']
             title = p['title']
             class_ = getattr(module, cname)
             instance = class_(title=title, initiative=initiative)
