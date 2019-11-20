@@ -10,6 +10,8 @@ from data.JiraObjectData import jiraLink, jiraDate2Datetime
 from service.BucketService import TimeBucket, Period
 import datetime
 import traceback
+from flask_table import Table, Col
+from collections import OrderedDict
 
 class AbstractPlugin(object):
     '''
@@ -33,30 +35,40 @@ class AbstractPlugin(object):
         print("\nRuntime for '%s': %s" % (self.title, end-start))
         return res
     def createTable(self,headers=None,values=None):
-        headers = list(map(lambda x: '<b>'+x+"</b>", headers))
-        fig = go.Figure(data=[go.Table(
-                header = dict(
-                values = headers,
-                line_color='darkslategray',
-                fill_color='royalblue',
-                align=['left','center'],
-                font=dict(color='white', size=12),
-                height=40
-                ),
-                cells=dict(
-                values=values,
-                line_color='darkslategray',
-                fill=dict(color=['paleturquoise', 'white']),
-                align=['left', 'left'],
-                font_size=12,
-                height=30)
-                )
-            ])
-        presult = plotly.offline.plot(fig, config={"displayModeBar": False}, 
-                                          show_link=False,
-                                          include_plotlyjs=False,
-                                          output_type='div')
-        return presult
+        # headers = list(map(lambda x: '<b>'+x+"</b>", headers))
+        # fig = go.Figure(data=[go.Table(
+        #         header = dict(
+        #         values = headers,
+        #         line_color='darkslategray',
+        #         fill_color='royalblue',
+        #         align=['left','center'],
+        #         font=dict(color='white', size=12),
+        #         height=40
+        #         ),
+        #         cells=dict(
+        #         values=values,
+        #         line_color='darkslategray',
+        #         fill=dict(color=['paleturquoise', 'white']),
+        #         align=['left', 'left'],
+        #         font_size=12,
+        #         height=30)
+        #         )
+        #     ])
+        # presult = plotly.offline.plot(fig, config={"displayModeBar": False},
+        #                                   show_link=False,
+        #                                   include_plotlyjs=False,
+        #                                   output_type='div')
+        # return presult
+        if headers and values:
+            lst = []
+            for v in values:
+                item = {}
+                for key, value in zip(headers, v):
+                    item[key] = value
+                lst.append(item)
+            table = DynamicTable(lst)
+            table.set_headers(headers)
+            return table.__html__()
 
     def createPieChart(self,labels=[], values=[], title=None):
         fig = go.Figure(data=[go.Pie(labels=labels, values=values)])
@@ -97,7 +109,6 @@ class AbstractPlugin(object):
             is_first = True
             for (x, y, label) in zip(xs, cumulative_ys, labels):
                 if x and y:
-                    print("chart: %s: %s" % (label, y))
                     maxvalue = max(maxvalue, max(y)+1)
                     if is_first:
                         fill = 'tozeroy'
@@ -172,18 +183,14 @@ class AbstractPlugin(object):
         
 
 class DetailsPlugin(AbstractPlugin):
+    '''Create a table with Initiative key/value details'''
     def goDoit(self):
         '''
         For now, only 'initiative' argument is NotImplemented
         '''
-                # Create a table with Initiative key/value details
-        ks = []
-        vs = []
-        for (k,v) in self.initiative.dict().items():
-            ks.append(Config.config.fields[k]['name'])
-            vs.append(v)
-        values = [ks,vs]
-        details_table = self.createTable(headers=['Attribute','Value'],values=values)
+        values = list(map(lambda x, y: (Config.config.fields[x]['name'], y),
+                          self.initiative.dict().keys(), self.initiative.dict().values()))
+        details_table = self.createTable(headers=['Attribute', 'Value'], values=values)
         res = dict(
             title=self.title,
             post=details_table
@@ -192,37 +199,24 @@ class DetailsPlugin(AbstractPlugin):
 
 
 class IssuesPlugin(AbstractPlugin):
-    
+    '''Create a table with an overview of the issues of the Initiatve'''
     def goDoit(self):
-         # Create a table with Initiative key/value details
-        ks = []
-        vs = []
-        tps = []
-        sts = []
-        ils = []
+        values = []
         for iss in self.initiative.traverse_recursive():
-            ks.append(iss.jiraLink())
-            vs.append(iss.summary)
-            tps.append(iss.issuetype)
-            sts.append(iss.status)
-            
+            l = ""
             if iss.issuelinks:
-                s = ""
                 d = iss.links()
                 inwards = d['inwards']
                 outwards = d['outwards']
                 if inwards:
-                    s += "inward: "
-                    s += ", ".join(map(lambda x: jiraLink(x[0],title=x[1]),inwards))
+                    l += "inward: "
+                    l += ", ".join(map(lambda x: jiraLink(x[0],title=x[1]),inwards))
                 if outwards:
-                    s += "outward: "
-                    s += ", ".join(map(lambda x: jiraLink(x[0],title=x[1]),outwards))
-                ils.append(s)
-            else:
-                ils.append("")
-            
-        values = [ks,vs,tps,sts,ils]
-        issues_table = self.createTable(headers=['Key','Summary','Type','Status','Links'],values=values)
+                    l += "outward: "
+                    l += ", ".join(map(lambda x: jiraLink(x[0],title=x[1]),outwards))
+            values.append((iss.key, iss.summary, iss.issuetype, iss.status, l))
+
+        issues_table = self.createTable(headers=['Key', 'Summary', 'Type', 'Status', 'Links'], values=values)
         res = dict(
             title=self.title,
             post=issues_table
@@ -330,9 +324,10 @@ class CumulativeFlowPlugin(AbstractPlugin):
         period = Period()
 
         # cumulative flow diagram
-        lst = period.datelist(all_issues)
+        date_list = period.datelist(all_issues)
+
         cflowdata = {}
-        for d in lst:
+        for d in date_list:
             cflowdata[d] = {}
             for iss in all_issues:
                 st = iss.statusAtDate(d)
@@ -341,8 +336,6 @@ class CumulativeFlowPlugin(AbstractPlugin):
                         cflowdata[d][st] = 1
                     else:
                         cflowdata[d][st] = cflowdata[d][st] + 1
-
-        date_list = period.datelist(all_issues)
 
         def group_function(issue, d):
             return issue.statusAtDate(d)
@@ -353,15 +346,28 @@ class CumulativeFlowPlugin(AbstractPlugin):
         ys = []
         for g in allgroups:
             newlabels.append(g)
-            xs.append(datelist)
+            xs.append(date_list)
             res_for_group = []
-            for d in datelist:
+            for d in date_list:
                 res_for_group.append(cflowdata[d][g])
             ys.append(res_for_group)
         cumulative_flow_chart = self.createAreaLineChart(xs=xs, ys=ys,
                                                        labels=newlabels, title="Cumulative Flow")
         res = dict(title=self.title, post=cumulative_flow_chart)
         return res
+
+class DynamicTable(Table):
+    def set_headers(self, headers):
+        self.headers = headers
+        lst = []
+        for h in headers:
+            setattr(self, h, Col(h))
+            lst.append((h, getattr(self, h)))
+        self._cols = OrderedDict()
+        # Then add the columns from this class.
+        this_cls_cols = sorted(lst, key=lambda x: x[1]._counter_val)
+        self._cols.update(OrderedDict(this_cls_cols))
+
 
 def make_cumulative(lst):
     '''
