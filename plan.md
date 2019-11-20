@@ -6,9 +6,9 @@
 
 1. General application
    - [x] Rewrite generation of individual charts as plugins
-   - [ ] Make configurable what charts are displayed in a report
+   - [x] Make configurable what charts are displayed in a report
    - [ ] Make template location configurable (so all can create their own "branded" templates)
-   - [ ] Create a separate configuration for development (minimize everything that is not under current development)
+   - [x] Create a separate configuration for development (minimize everything that is not under current development)
 
 2. Features of reports
    - [ ] Add time spent reporting in overview
