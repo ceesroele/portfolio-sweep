@@ -5,19 +5,31 @@ Created on Nov 13, 2019
 '''
 import unittest
 import datetime
-from service.BucketService import Period
-
+from service.BucketService import TimeBucket, Period
+import Config
 
 class Test(unittest.TestCase):
 
-
     def setUp(self):
-        pass
-
+        Config.app = Config.App()
+        Config.config = Config.Config("../../sweep.yaml")
 
     def tearDown(self):
         pass
 
+    def test_TimeBucket_cumulative(self):
+        dictionary = {
+            0: 10,
+            1: 20,
+            2: 30
+        }
+        bs = TimeBucket(Config.config, [])
+        output = bs.cumulative(dictionary)
+        # result of TimeBucket.cumulative should have same number of elements as input
+        self.assertEqual(len(dictionary), len(output), "Number of elements in dictionary changed")
+
+        # max value should be equal to the sum of all values
+        self.assertEqual(sum(dictionary.values()), max(output.values()), "Sum of values of input must equal max of values of output")
 
     def test_Period_generate(self):
         period = Period()
