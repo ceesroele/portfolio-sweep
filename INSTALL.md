@@ -6,6 +6,7 @@ Sweep uses the following python extras:
 * atlassian
 * jinja2
 * flask
+* Flask-Table*
 * plotly
 
 You can install them with: pip install <name>
