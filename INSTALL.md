@@ -6,7 +6,8 @@ Sweep uses the following python extras:
 * atlassian
 * jinja2
 * flask
-* Flask-Table*
+* Flask-Table
+* Django
 * plotly
 
 You can install them with: pip install <name>
@@ -17,7 +18,7 @@ You can install them with: pip install <name>
 2. Modify the settings in sweep.yaml
 
 
-# Run
+# Run to generate HTML reports
 
     $ python3 Start.py
 
@@ -26,3 +27,7 @@ or
     $ python3
     >>> import Start
     >>> Start.main()
+
+# Run from Django
+
+    ./server $ python3 manage.py runserver

@@ -133,15 +133,18 @@ class PortfolioService(object):
         pd = PortfolioData(self.config.getPortfolio(), initiativeDataList)
         print("Loaded portfolio in %s" % (datetime.datetime.now()-start),)
         return pd
+
     def loadPortfolioMixed(self):
         print("Loading mixed style (optimum from jira+database) is not implemented")
         sys.exit(0)
-        pass
-    def get(self,key=None):
-        return self.persist.load(key,None)
+
+    def get(self, key=None):
+        return self.persist.load(key, None)
+
     def jira(self):
         return self.jira
-    def issue(self,key,expand=None):
+
+    def issue(self, key, expand=None):
         return self.jira.issue(key,expand=expand)
     
 class Persist(object):
@@ -193,6 +196,7 @@ class Persist(object):
         conn.commit()
         c.close()
         conn.close()
+
     def load(self, key=None, updated=None):
         '''
         For now: only load from database
@@ -202,17 +206,18 @@ class Persist(object):
         else:
             conn = self.config.getDatabase()
             c = conn.cursor()
-            c.execute('''select * from issues where key=?''',(key,))
+            c.execute('''select * from issues where key=?''', (key,))
             res = c.fetchall()
             result = None
             for row in res:
                 raw_issue = pickle.loads(row[4])
                 issuetype = row[2]
                 issuestructure = row[3]
+                d = eval(issuestructure)
+                level = d['level']
                 x = jira.resources.Issue(None, None, raw_issue)
-                if issuetype == 'Initiative':
-                    print("Loading initiative: "+issuestructure)
-                    d = eval(issuestructure)
+                if level == 'initiative':
+                    print("Loading initiative %s: %s" % (key, issuestructure))
                     children = []
                     if 'children' in d.keys():
                         for k in d['children']:
@@ -220,9 +225,8 @@ class Persist(object):
                     else:
                         print("No 'children' in dictionary %s" % d)
                     result = InitiativeData(jiraIssue=x,epics=children)                   
-                elif issuetype == 'Epic':
-                    print("Loading epic: "+issuestructure)
-                    d = eval(issuestructure)
+                elif level == 'epic':
+                    print("Loading epic %s: %s" %(key, issuestructure))
                     children = []
                     if 'children' in d.keys():
                         for k in d['children']:

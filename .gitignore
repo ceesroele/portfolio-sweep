@@ -1,3 +1,4 @@
 # Ignore all compiled python files 
 **/*.py[co]
 **/__pycache__
+/src/server/db.sqlite3

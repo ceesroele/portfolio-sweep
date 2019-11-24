@@ -13,6 +13,8 @@ import datetime
 from pathlib import Path
 from plugin.Plugin import DetailsPlugin, IssuesPlugin, IssueTypesPlugin, TreeMapPlugin, CumulativeFlowPlugin, BurnupPlugin
 import importlib
+import shutil
+import os
 
 class ReportService(object):
     '''
@@ -58,14 +60,17 @@ class ReportService(object):
             posts.append(instance.go())
 
         template = self.env.get_template('details.html')
-        self.writeTemplate(
-            'report-%s.html' % initiative.key,
-            template.render(
+        text = template.render(
                 issue=initiative,
                 meta=meta,
                 posts=posts
                 )
+
+        self.writeTemplate(
+            'report-%s.html' % initiative.key,
+            text
             )
+        return text
 
     def portfolioOverview(self, portfolioData):
         '''
@@ -76,13 +81,14 @@ class ReportService(object):
             title='Portfolio',
             timestamp=datetime.datetime.now()
             )
+        text = template.render(issues=portfolioData.traverse(),meta=meta)
         self.writeTemplate(
-            "portfolio", 
-            template.render(issues=portfolioData.traverse(),meta=meta)
+            "portfolio",
+            text
             )
-        
+        return text
 
-    def writeTemplate(self,filename,text):
+    def writeTemplate(self, filename, text):
         dirname = Config.config.getReportDirectory()
         suffix = ".html"
         path = Path(dirname, filename).with_suffix(suffix)
@@ -90,6 +96,18 @@ class ReportService(object):
         f.write(text)
         print(path.as_uri())
         f.close()
+
+    def copy_static_files(self):
+        '''Copy the static files, e.g. *.css to the reporting directory'''
+        reporting_dir = Config.config.getReportDirectory()
+        static_files_subdir = "service/web/static"
+        from_dir = os.path.join(os.getcwd(), static_files_subdir)
+        to_dir = os.path.join(reporting_dir, "static")
+        if not os.path.exists(to_dir):
+            os.mkdir(to_dir)
+        for s in os.listdir(from_dir):
+            sf = os.path.join(from_dir, s)
+            shutil.copy(sf, to_dir)
 
     def reportOverview(self, lst):
         '''

@@ -11,15 +11,25 @@ from service.ReportService import ReportService
  
 import datetime
 import argparse
+import sys
 
 import Config
 
 DEFAULT_CONFIGURATION_FILE = "../../sweep.yaml"
 
 def main(**kwargs):
-    default_args = getParser().parse_args()
-    args = default_args.__dict__
-    args.update(kwargs)
+    with_reporting = True
+    if sys.argv and sys.argv[0] != "manage.py":
+        print("no manage.py: %s" % sys.argv)
+        default_args = getParser().parse_args()
+        args = default_args.__dict__
+        args.update(kwargs)
+    else:
+        from server import settings
+        print(settings.DEFAULT_CONFIG_FILE)
+        print(settings.DEFAULT_VERBOSITY)
+        args = {'config': settings.DEFAULT_CONFIG_FILE, 'verbose': settings.DEFAULT_VERBOSITY}
+        with_reporting = False
     
     start = datetime.datetime.now()
     # Read configuration and set 'config' to a global in the Config module so it is available to all of the application
@@ -27,31 +37,32 @@ def main(**kwargs):
     Config.config = Config.Config(args['config'])
     
     portfolio = PortfolioService(Config.config)
-    report = ReportService(Config.config)
-    portfolioData = portfolio.loadPortfolio()
+    Config.app.portfolioData = portfolio.loadPortfolio()
 
     print("--- portfolio ---")
-    for initiative in portfolioData.traverse():
+    for initiative in Config.app.portfolioData.traverse():
         print("* Initiative: "+str(initiative))
         print("- No epics" if not initiative.traverse() else "- Epics:")
         for epic in initiative.traverse():
             print("-- " + str(epic))
     print("-----------------")
-    
-    startReporting = datetime.datetime.now()
-    # Portfolio overview
-    report.portfolioOverview(portfolioData)
-    
-    # Report overview
-    #report.reportOverview(issues)
-    
-    # Report details on each Initiative
-    for v in portfolioData.traverse():
-        report.reportDetails(v)
-    print("Reporting time: %s" % (datetime.datetime.now()-startReporting,))
+
+    if with_reporting:
+        report = ReportService(Config.config)
+        startReporting = datetime.datetime.now()
+        # Portfolio overview
+        report.portfolioOverview(Config.app.portfolioData)
+
+        # Report details on each Initiative
+        for v in Config.app.portfolioData.traverse():
+            report.reportDetails(v)
+
+        report.copy_static_files()
+
+        print("Reporting time: %s" % (datetime.datetime.now()-startReporting))
     
     end = datetime.datetime.now()
-    print("\nRuntime %s" % (end-start,))
+    print("\nRuntime %s" % (end-start))
 
 def getParser():
     '''
@@ -63,10 +74,8 @@ def getParser():
                         help='Location of configuration file'
                         )
     parser.add_argument("--verbose", "-v", help="Increase output verbosity",
-                    choices=[0,1,2], type=int, default=0)
+                    choices=[0, 1, 2], type=int, default=0)
     return parser
 
 if __name__ == '__main__':
-    args = getParser().parse_args()
-    print(args)
-    main(**args.__dict__)
+    main()

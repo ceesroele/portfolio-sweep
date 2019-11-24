@@ -25,5 +25,7 @@ Create unified reports on work planned and done out of Jira for a whole portfoli
 
 Current development goals can be found in the [plan](plan.md)
 
+Actual changes and the reasons for them can be found in [changes](changes.md)
+
 # Installation
 Details on installs are in [INSTALL.md](INSTALL.md)

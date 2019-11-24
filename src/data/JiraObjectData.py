@@ -143,7 +143,7 @@ class PortfolioData(JiraObjectData):
     Representing epic.
     '''
 
-    def __init__(self, name, initiatives=None,sagas=None):
+    def __init__(self, name, initiatives=None, sagas=None):
         '''
         Create epic data from Jira epic issue and issues referring to it
         '''
