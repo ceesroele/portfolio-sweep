@@ -32,6 +32,7 @@ class TimeBucket(object):
 #                print("older %s: %s" % (iss.key, date_time_obj))
 #            else:
 #                print("newer %s: %s" % (iss.key, date_time_obj))
+            pass
     def cumulative(self, dictionary):
         '''
         Count up the values in the dictionary, that is, to every next higher value, the sum of all previous values is added.
@@ -100,7 +101,7 @@ class Period(object):
                 return d
         return interval[-1]
 
-    def analyse_monotonic(self, issues, matchfunction):
+    def analyse_monotonic(self, issues, matchfunction, valuefunction=None):
         '''
         Value changes only once from false to true.
         matchfunction returns the date at which the condition changes for an issue from false to true
@@ -113,22 +114,31 @@ class Period(object):
         if not periodlist:
             # FIXME: raise some specific error
             print("GOT NO PERIODLIST for (%s,%s)" % (start, end))
-        for iss in issues:
-            d = matchfunction(iss)
-            if d:
-                md = self.periodMatch(d, periodlist)
-                if md in res:
-                    res[md] = res[md] + 1
-                else:
-                    res[md] = 1
+        else:
+            if not valuefunction:
+                # by default return 1
+                valuefunction = lambda x: 1
 
-        # Sort the dictionary by key
-        x = list(res.keys())
-        x.sort()
-        output = {}
-        for k in x:
-            output[k] = res[k]
-        return output
+            for iss in issues:
+                v = valuefunction(iss)
+                if v is None:
+                    v = 0
+
+                d = matchfunction(iss)
+                if d:
+                    md = self.periodMatch(d, periodlist)
+                    if md in res:
+                        res[md] = res[md] + v
+                    else:
+                        res[md] = v
+
+            # Sort the dictionary by key
+            x = list(res.keys())
+            x.sort()
+            output = {}
+            for k in x:
+                output[k] = res[k]
+            return output
 
     def analyse_group(self, issues, datelist, groupfunction, groupsortfunction=None):
         '''
@@ -167,7 +177,7 @@ class Period(object):
         dates.sort()
         (start,end) = self.interval_dates(dates)
         res = {}
-        periodlist = self.generate(start,end)
+        periodlist = self.generate(start, end)
         for d in dates:
             md = self.periodMatch(d, periodlist)
             #print("created %s -> %s" % (created,md))

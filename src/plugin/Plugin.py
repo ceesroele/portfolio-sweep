@@ -178,6 +178,43 @@ class DetailsPlugin(AbstractPlugin):
             )
         return res        
 
+class AggregateDataPlugin(AbstractPlugin):
+    '''Create a table with Initiative key/value details'''
+    def goDoit(self):
+        '''
+        For now, only 'initiative' argument is NotImplemented
+        '''
+        class DetailsTable(Table):
+            key = Col('Attribute')
+            value = Col('Value')
+
+        timeoriginalestimate = None
+        if self.initiative.timeoriginalestimate:
+            timeoriginalestimate = self.initiative.timeoriginalestimate
+
+        estimated = 0
+        timespent = 0
+        for iss in self.initiative.traverse_recursive():
+            e = iss.timeoriginalestimate
+            if e is None:
+                e = 0
+            estimated += e
+            t = iss.timespent
+            if t is None:
+                t = 0
+            timespent += t
+
+        values = []
+        if timeoriginalestimate:
+            values.append(['Original estimate', timeoriginalestimate])
+        values += [['Estimate', estimated], ['Time spent', timespent]]
+        details_table = self.createTable(DetailsTable, headers=['key', 'value'], values=values)
+        res = dict(
+            title=self.title,
+            post=details_table
+            )
+        return res
+
 
 class IssuesPlugin(AbstractPlugin):
     '''Create a table with an overview of the issues of the Initiatve'''
@@ -299,6 +336,77 @@ class BurnupPlugin(AbstractPlugin):
                 ys.append(y2)
 
             line_map = self.createMultiLineMap(xs=xs, ys=ys, labels=[label1, label2], title=self.title)
+            return dict(title=self.title, post=line_map)
+
+
+class TimeSpentPlugin(AbstractPlugin):
+    def goDoit(self):
+        all_issues = self.initiative.traverse_recursive(lambda x: str(x.issuetype) == "Task")
+        closing_dates = []
+
+        if all_issues:
+            # FIXME: "bucket" currently does nothing other than make 'cumulative' function available
+            bucket = TimeBucket(Config.config, all_issues)
+            bucket
+            xs = []
+            ys = []
+            labels = []
+
+            period = Period()
+            created_match = lambda x: x.created
+            def timeestimate(issue):
+                value = issue.timeoriginalestimate
+                if value is None:
+                    value = 0
+                else:
+                    # convert seconds to hours
+                    value = value / 3600
+                return value
+
+            created_results = period.analyse_monotonic(all_issues, created_match, valuefunction=timeestimate)
+            linedict = bucket.cumulative(created_results)
+            x1 = list(linedict.keys())
+            y1 = list(linedict.values())
+            xs.append(x1)
+            ys.append(y1)
+            labels.append("estimated")
+
+            # function to determine the date at which the issue is closed
+            def closingmatch(issue):
+                closingDate = issue.statusChangedTo('Done')
+                if closingDate:
+                    return jiraDate2Datetime(closingDate)
+
+            def timespent(issue):
+                value = issue.timespent
+                if value is None:
+                    value = 0
+                else:
+                    # convert seconds to hours
+                    value = value / 3600
+                return value
+
+            closing_results = period.analyse_monotonic(all_issues, closingmatch, valuefunction=timespent)
+            # Create a second line map for closed issues
+            labels.append("timespent")
+            if closing_results:
+                nextlinedict = bucket.cumulative(closing_results)
+                # in python, keys() and values() for a dictionary come in the same order
+                x2 = list(nextlinedict.keys())
+                y2 = list(nextlinedict.values())
+                xs.append(x2)
+                ys.append(y2)
+
+            timeoriginalestimate = self.initiative.timeoriginalestimate
+            if timeoriginalestimate is not None:
+                start = x1[0]
+                end = x1[-1]
+                t = timeoriginalestimate / 3600
+                xs.append([start,end])
+                ys.append([t,t])
+                labels.append('original estimate')
+
+            line_map = self.createMultiLineMap(xs=xs, ys=ys, labels=labels, title=self.title)
             return dict(title=self.title, post=line_map)
 
 

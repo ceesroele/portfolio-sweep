@@ -27,7 +27,7 @@ class ReportService(object):
         Constructor
         '''
         self.env = Environment(
-            loader=PackageLoader('service','web'),
+            loader=PackageLoader('service', 'web'),
             autoescape=False)
 #            autoescape=select_autoescape(['html', 'xml'])
 #        )
