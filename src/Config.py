@@ -11,6 +11,15 @@ import atlassian
 import datetime
 import pickle
 
+# *** Configuration: default settings ***********************************
+
+STATIC_URL = '/static/'
+
+# Settings for Sweep
+DEFAULT_CONFIG_FILE = '../../sweep.yaml'
+DEFAULT_VERBOSITY = 0
+# ************************************************************************
+
 # We set the variable 'config' as a global inside this module, so it can be read from the entire application
 config = None
 app = None
@@ -34,6 +43,7 @@ class Config(object):
         self.persist = PersistConfig(self)
         self.loadFields()
         self.printConfiguration()
+
     def printConfiguration(self):
         '''
         Write configuration to console.
@@ -46,18 +56,20 @@ class Config(object):
             inputmode += " (SQLite3 file: "+self.getDatabasePath()+")"
 
         app.console("Configuration:", 0)
-        app.console("* Reading configuration from: %s" % (self.configfile,), 0)
+        app.console("* Reading configuration from: %s (%s)" % (self.configfile,os.path.normpath(os.path.abspath(self.configfile))), 0)
         app.console("* Portfolio: %s" % (self.getPortfolio(),), 0)
         app.console("* Input mode: %s" % (inputmode,), 0)
         app.console("* Loaded fields: %s" % (", ".join(self.fields.keys()),), 2)
         app.console("* Loaded plugins: %s" % ", ".join(self.config['plugins']['sections'].keys()), 0)
         app.console("* Report directory: %s" % (self.getReportDirectory(),), 0)
+
     def getPlugins(self):
         d = self.config['plugins']['sections']
         lst = []
         for k in d.keys():
             lst.append(dict(cname=k, title=d[k]['title']))
         return lst
+
     def getJira(self):
         '''
         jira client: https://pypi.org/project/jira/
@@ -67,6 +79,7 @@ class Config(object):
         }
 
         return jira.JIRA(options, basic_auth=(self.config['jira']['username'], self.config['jira']['token']))
+
     def getAtlassianJira(self):
         '''
         atlassian client: https://pypi.org/project/atlassian-python-api/
@@ -76,15 +89,18 @@ class Config(object):
             username=self.config['jira']['username'],
             password=self.config['jira']['token']
             )
+
     def getDatabasePath(self):
         filename = self.config['database']['filename']
         path = self.config['database']['path']
         return os.path.join(path, filename)
+
     def getDatabase(self):
         '''
         Get a database connection
         '''
         return sqlite3.connect(self.getDatabasePath())
+
     def loadFields(self):
         if self.loadingMode() == 'database':
             self.fields = self.persist.loadConfig("fields")
@@ -94,15 +110,20 @@ class Config(object):
             for f in all_fields:
                 self.fields[f['id']] = f
             self.persist.saveConfig(key="fields", updated=None, configdata=self.fields)
+
     def loadingMode(self):
         loadingMode = self.config['loading']['mode']
         return loadingMode
+
     def getPortfolio(self):
         return self.config['portfolio']['name']
+
     def getFieldType(self, key):
         return self.fields[key]['schema']['type']
+
     def getReportDirectory(self):
         return self.config['reports']['directory']
+
     def __str__(self):
         return str(self.config)
     
@@ -130,6 +151,7 @@ class PersistConfig(object):
         self.config = config
         c.close()
         conn.close()
+
     def loadConfig(self,key=None):
         conn = self.config.getDatabase()
         c = conn.cursor()
@@ -147,8 +169,7 @@ class PersistConfig(object):
             updated = row[1]
             configdata = pickle.loads(row[2])
             return configdata  
-        else:
-            return None
+
     def saveConfig(self,key=None,updated=None, configdata=None):
         if updated is None:
             updated = datetime.datetime.now()
@@ -172,6 +193,7 @@ class App(object):
     '''
     def __init__(self, verbosity=0):
         self.verbosity = verbosity
+
     def console(self,message,level=0):
         '''
         Log to console, depending on verbosity

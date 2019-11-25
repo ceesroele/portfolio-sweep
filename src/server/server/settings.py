@@ -36,7 +36,8 @@ INSTALLED_APPS = [
     'django.contrib.contenttypes',
     'django.contrib.sessions',
     'django.contrib.messages',
-    'django.contrib.staticfiles',
+    # not using Django for static files
+    #'django.contrib.staticfiles',
 ]
 
 MIDDLEWARE = [
@@ -117,8 +118,4 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/2.2/howto/static-files/
 
-STATIC_URL = '/static/'
-
-# Settings for Sweep
-DEFAULT_CONFIG_FILE = '../../sweep.yaml'
-DEFAULT_VERBOSITY = 0
+#STATIC_URL = '/static/'

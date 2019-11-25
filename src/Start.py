@@ -12,25 +12,22 @@ from service.ReportService import ReportService
 import datetime
 import argparse
 import sys
+import os
 
 import Config
 
-DEFAULT_CONFIGURATION_FILE = "../../sweep.yaml"
-
 def main(**kwargs):
     with_reporting = True
-    if sys.argv and sys.argv[0] != "manage.py":
-        print("no manage.py: %s" % sys.argv)
+    if sys.argv and sys.argv[0] == "manage.py":
+        # Started from Django: $ python3 manage.py runserver
+        args = {'config': Config.DEFAULT_CONFIG_FILE, 'verbose': Config.DEFAULT_VERBOSITY}
+        with_reporting = False
+    else:
+        # Started from command line: $ python3 Start.py
         default_args = getParser().parse_args()
         args = default_args.__dict__
         args.update(kwargs)
-    else:
-        from server import settings
-        print(settings.DEFAULT_CONFIG_FILE)
-        print(settings.DEFAULT_VERBOSITY)
-        args = {'config': settings.DEFAULT_CONFIG_FILE, 'verbose': settings.DEFAULT_VERBOSITY}
-        with_reporting = False
-    
+
     start = datetime.datetime.now()
     # Read configuration and set 'config' to a global in the Config module so it is available to all of the application
     Config.app = Config.App(verbosity=args['verbose'])
@@ -70,11 +67,11 @@ def getParser():
     '''
     parser = argparse.ArgumentParser(description='Sweep Portfolio data from Jira')
     parser.add_argument('--config', '-c',
-                        default=DEFAULT_CONFIGURATION_FILE,
+                        default=Config.DEFAULT_CONFIG_FILE,
                         help='Location of configuration file'
                         )
     parser.add_argument("--verbose", "-v", help="Increase output verbosity",
-                    choices=[0, 1, 2], type=int, default=0)
+                    choices=[0, 1, 2], type=int, default=Config.DEFAULT_VERBOSITY)
     return parser
 
 if __name__ == '__main__':

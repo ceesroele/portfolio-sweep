@@ -21,12 +21,11 @@ urlpatterns = [
     path('report/', include('report.urls'))
 ]
 
+# Start the sweep application
 try:
     import sys
     sys.path.append("..")
-    print(sys.argv)
     import Start
     Start.main()
-    print(sys.argv)
 except ImportError as e:
     print("Failed to import START: %s" % e)
