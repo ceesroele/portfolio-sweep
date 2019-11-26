@@ -4,7 +4,7 @@ Created on Oct 27, 2019
 @author: cjr
 '''
 import datetime
-from data.JiraObjectData import jiraDate2Datetime
+import pandas as pd
 
 class TimeBucket(object):
     '''
@@ -101,7 +101,7 @@ class Period(object):
                 return d
         return interval[-1]
 
-    def analyse_monotonic(self, issues, matchfunction, valuefunction=None):
+    def analyse_monotonic(self, issues, matchfunction, valuefunction=None, field_name="value"):
         '''
         Value changes only once from false to true.
         matchfunction returns the date at which the condition changes for an issue from false to true
@@ -111,6 +111,7 @@ class Period(object):
         (start, end) = self.interval(issues)
         res = {}
         periodlist = self.generate(start, end)
+        rows = []
         if not periodlist:
             # FIXME: raise some specific error
             print("GOT NO PERIODLIST for (%s,%s)" % (start, end))
@@ -135,10 +136,13 @@ class Period(object):
             # Sort the dictionary by key
             x = list(res.keys())
             x.sort()
-            output = {}
+            # summation using 'prev' variable: each new value is added to the sum of all previous values
+            prev = 0
             for k in x:
-                output[k] = res[k]
-            return output
+                rows.append({'date': k, field_name: prev+res[k]})
+                prev += res[k]
+            df = pd.DataFrame(rows, columns=['date', field_name])
+            return df
 
     def analyse_group(self, issues, datelist, groupfunction, groupsortfunction=None):
         '''

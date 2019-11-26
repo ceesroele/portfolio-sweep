@@ -12,6 +12,8 @@ import datetime
 import traceback
 from flask_table import Table, Col, LinkCol
 from collections import OrderedDict
+import pandas as pd
+import math
 
 class AbstractPlugin(object):
     '''
@@ -106,34 +108,47 @@ class AbstractPlugin(object):
                                           output_type='div')
             return presult
 
-    def createMultiLineMap(self,xs=[],ys=[],labels=[], title=None):
+    def createMultiLineMap(self, dataframe, title=None):
         '''
         Create line chart with multiple lines
-        xs, ys, and labels are lists of lists, each representing one line
+        :param dataframe contains the data of all lines, with 'data' being the key
         '''
-        if not ys or not xs or not labels:
+        if dataframe.empty:
             return ""
         else:
+            maxvalue = 0
+            # {<column_name>: {'dates': [ ... ], 'values': [ ... ]} }
+            d = {}
+            for index, row in dataframe.iterrows():
+                for c in dataframe.columns[1:]:
+                    if isinstance(row[c], float) and not math.isnan(row[c]):
+                        # get the maximum value for setting the maximum of the y-axis of the diagram
+                        if row[c] > maxvalue:
+                            maxvalue = row[c]
+                        if c not in d.keys():
+                            d[c] = {'dates': [row['date'].date()], 'values': [row[c]]}
+                        else:
+                            d[c]['dates'].append(row['date'].date())
+                            d[c]['values'].append(row[c])
+
+            maxvalue += 1
             fig = go.Figure()
             if title:
                 fig.update_layout(title_text=title)
-            
-            maxvalue = 0
-            for (x, y, label) in zip(xs, ys, labels):
-                maxvalue = max(maxvalue, max(y)+1) 
+
+            for label in d.keys():
                 fig.add_trace(go.Scatter(
-                    x=x,
-                    y=y,
+                    x=d[label]['dates'],
+                    y=d[label]['values'],
                     name=label
-                    ))
-                
-            fig.update_layout(yaxis_range=[0, maxvalue], showlegend=True)
+                ))
+
+            fig.update_layout(yaxis_range=[0, maxvalue+1], showlegend=True)
             presult = plotly.offline.plot(fig, config={"displayModeBar": False},
                                           show_link=False,
                                           include_plotlyjs=False,
                                           output_type='div')
             return presult
-
 
     def createLineMap(self,x=[],y=[],title=None):
         if not y:
@@ -248,6 +263,7 @@ class IssuesPlugin(AbstractPlugin):
         return res
 
 class IssueTypesPlugin(AbstractPlugin):
+    '''Create a piechart with issue types'''
     def goDoit(self):
         issuetypes = {}
         all_issues = self.initiative.traverse_recursive(withepics=True)
@@ -298,25 +314,14 @@ class TreeMapPlugin(AbstractPlugin):
     
     
 class BurnupPlugin(AbstractPlugin):
+    '''Create a burnup chart'''
     def goDoit(self):
         all_issues = self.initiative.traverse_recursive(lambda x: str(x.issuetype) == "Task")
-        closing_dates = []
 
         if all_issues:
-            # FIXME: "bucket" currently does nothing other than make 'cumulative' function available
-            bucket = TimeBucket(Config.config, all_issues)
-            xs = []
-            ys = []
-
             period = Period()
             created_match = lambda x: x.created
-            created_results = period.analyse_monotonic(all_issues, created_match)
-            linedict = bucket.cumulative(created_results)
-            x1 = list(linedict.keys())
-            y1 = list(linedict.values())
-            xs.append(x1)
-            ys.append(y1)
-            label1 = "created"
+            created_df = period.analyse_monotonic(all_issues, created_match, field_name="created")
 
             # function to determine the date at which the issue is closed
             def closingmatch(issue):
@@ -324,34 +329,19 @@ class BurnupPlugin(AbstractPlugin):
                 if closingDate:
                     return jiraDate2Datetime(closingDate)
 
-            closing_results = period.analyse_monotonic(all_issues, closingmatch)
-            # Create a second line map for closed issues
-            label2 = "closed"
-            if closing_results:
-                nextlinedict = bucket.cumulative(closing_results)
-                # in python, keys() and values() for a dictionary come in the same order
-                x2 = list(nextlinedict.keys())
-                y2 = list(nextlinedict.values())
-                xs.append(x2)
-                ys.append(y2)
-
-            line_map = self.createMultiLineMap(xs=xs, ys=ys, labels=[label1, label2], title=self.title)
+            closing_df = period.analyse_monotonic(all_issues, closingmatch, field_name="closed")
+            df_total = pd.merge(created_df, closing_df, how="outer", on="date").sort_values(by='date')
+            line_map = self.createMultiLineMap(df_total, title=self.title)
             return dict(title=self.title, post=line_map)
 
 
 class TimeSpentPlugin(AbstractPlugin):
+    '''Create a chart displaying how much time was estimated and how much as spent at the time of closing an issue.'''
     def goDoit(self):
         all_issues = self.initiative.traverse_recursive(lambda x: str(x.issuetype) == "Task")
         closing_dates = []
 
         if all_issues:
-            # FIXME: "bucket" currently does nothing other than make 'cumulative' function available
-            bucket = TimeBucket(Config.config, all_issues)
-            bucket
-            xs = []
-            ys = []
-            labels = []
-
             period = Period()
             created_match = lambda x: x.created
             def timeestimate(issue):
@@ -363,14 +353,8 @@ class TimeSpentPlugin(AbstractPlugin):
                     value = value / 3600
                 return value
 
-            created_results = period.analyse_monotonic(all_issues, created_match, valuefunction=timeestimate)
-            linedict = bucket.cumulative(created_results)
-            x1 = list(linedict.keys())
-            y1 = list(linedict.values())
-            xs.append(x1)
-            ys.append(y1)
-            labels.append("estimated")
-
+            created_results_df = period.analyse_monotonic(all_issues, created_match,
+                                                          valuefunction=timeestimate, field_name='estimated')
             # function to determine the date at which the issue is closed
             def closingmatch(issue):
                 closingDate = issue.statusChangedTo('Done')
@@ -386,31 +370,25 @@ class TimeSpentPlugin(AbstractPlugin):
                     value = value / 3600
                 return value
 
-            closing_results = period.analyse_monotonic(all_issues, closingmatch, valuefunction=timespent)
-            # Create a second line map for closed issues
-            labels.append("timespent")
-            if closing_results:
-                nextlinedict = bucket.cumulative(closing_results)
-                # in python, keys() and values() for a dictionary come in the same order
-                x2 = list(nextlinedict.keys())
-                y2 = list(nextlinedict.values())
-                xs.append(x2)
-                ys.append(y2)
+            closing_results_df = period.analyse_monotonic(all_issues, closingmatch, valuefunction=timespent, field_name="timespent")
 
             timeoriginalestimate = self.initiative.timeoriginalestimate
+            rows = []
+            df_total = pd.merge(created_results_df, closing_results_df, how="outer").sort_values(by='date')
             if timeoriginalestimate is not None:
-                start = x1[0]
-                end = x1[-1]
+                # If a time is estimated at the initiative level - estimate for the whole project -
+                # it is drawn from the first date to the last date.
                 t = timeoriginalestimate / 3600
-                xs.append([start,end])
-                ys.append([t,t])
-                labels.append('original estimate')
-
-            line_map = self.createMultiLineMap(xs=xs, ys=ys, labels=labels, title=self.title)
+                rows.append({'date': df_total.date.min(), 'total estimate': t})
+                rows.append({'date': df_total.date.max(), 'total estimate': t})
+            estimate_df = pd.DataFrame(rows, columns=['date', 'total estimate'])
+            df_total = pd.merge(df_total, estimate_df, how="outer").sort_values(by='date')
+            line_map = self.createMultiLineMap(df_total, title=self.title)
             return dict(title=self.title, post=line_map)
 
 
 class CumulativeFlowPlugin(AbstractPlugin):
+    '''Create a cumulative flow diagram'''
     def goDoit(self):
         # basic traversal
         all_issues = self.initiative.traverse_recursive()
