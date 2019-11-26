@@ -29,3 +29,6 @@ Actual changes and the reasons for them can be found in [changes](changes.md)
 
 # Installation
 Details on installs are in [INSTALL.md](INSTALL.md)
+
+# See also
+[jira metrics extract](https://github.com/rnwolf/jira-metrics-extract)
