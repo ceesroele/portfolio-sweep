@@ -19,11 +19,26 @@ class AbstractPlugin(object):
     '''
     classdocs
     '''
-    def __init__(self,title="", initiative=None,issues=[]):
+    def __init__(self, title="", initiative=None, issues=[]):
         self.title = title
         self.initiative = initiative
         self.issues = issues
-    
+        self.initiative_df = self.load_initiative_dataframe(initiative)
+
+    def load_initiative_dataframe(self, initiative):
+        '''Load a dataframe with standard information on the iniative'''
+        all_issues = self.initiative.traverse_recursive(withepics=True)
+        rows = []
+        for iss in all_issues:
+            rows.append({
+                'key': iss.key,
+                'issuetype': str(iss.issuetype),
+                'timeoriginalestimate': iss.timeoriginalestimate,
+                'timespent': iss.timespent
+            })
+        df = pd.DataFrame(rows, columns=['key', 'issuetype', 'timeoriginalestimate', 'timespent'])
+        return df
+
     def go(self):
         start = datetime.datetime.now()
         res = None
@@ -49,7 +64,9 @@ class AbstractPlugin(object):
             #table.set_headers(headers)
             return table.__html__()
 
-    def createPieChart(self,labels=[], values=[], title=None):
+    def createPieChart(self, dataframe, title=None):
+        labels = dataframe['issuetype'].tolist()
+        values = dataframe['count'].tolist() # FIXME: now 'key' is set automatically as column name, set it manually
         fig = go.Figure(data=[go.Pie(labels=labels, values=values)])
         fig.update_layout(showlegend=True)
         presult = plotly.offline.plot(fig, config={"displayModeBar": False},
@@ -265,16 +282,9 @@ class IssuesPlugin(AbstractPlugin):
 class IssueTypesPlugin(AbstractPlugin):
     '''Create a piechart with issue types'''
     def goDoit(self):
-        issuetypes = {}
-        all_issues = self.initiative.traverse_recursive(withepics=True)
-        for iss in all_issues:
-                itype = iss.issuetype
-                if itype in issuetypes.keys():
-                    issuetypes[itype] = issuetypes[itype] + 1
-                else:
-                    issuetypes[itype] = 1
-
-        piechart = self.createPieChart(labels=list(issuetypes.keys()),values=list(issuetypes.values()), title="Issue types")
+        # the 'groupby' column somehow gets the column name 'key'. Rename it to 'count'.
+        dataframe = self.initiative_df.groupby('issuetype').count().reset_index().rename(columns={'key': 'count'})
+        piechart = self.createPieChart(dataframe, title="Issue types")
         res = dict(title=self.title, post=piechart)
         return res
     
