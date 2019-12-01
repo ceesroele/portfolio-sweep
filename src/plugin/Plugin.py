@@ -11,9 +11,9 @@ from service.BucketService import TimeBucket, Period
 import datetime
 import traceback
 from flask_table import Table, Col, LinkCol
-from collections import OrderedDict
 import pandas as pd
 import math
+import pprint
 
 class AbstractPlugin(object):
     '''
@@ -393,6 +393,7 @@ class TimeSpentPlugin(AbstractPlugin):
                 rows.append({'date': df_total.date.max(), 'total estimate': t})
             estimate_df = pd.DataFrame(rows, columns=['date', 'total estimate'])
             df_total = pd.merge(df_total, estimate_df, how="outer").sort_values(by='date')
+
             line_map = self.createMultiLineMap(df_total, title=self.title)
             return dict(title=self.title, post=line_map)
 
@@ -403,39 +404,57 @@ class CumulativeFlowPlugin(AbstractPlugin):
         # basic traversal
         all_issues = self.initiative.traverse_recursive()
 
-        bucket = TimeBucket(Config.config, all_issues)
-        period = Period()
-
         # cumulative flow diagram
+        period = Period()
         date_list = period.datelist(all_issues)
+        status_list = Config.config.loadStatus()
 
-        cflowdata = {}
+        # Format for aggregation:
+        # - date
+        # - issuekey (key)
+        # - status
+        rows = []
+        # Format for construction a base list containing every status for every date
+        # - date
+        # - status
+        srows = []
         for d in date_list:
-            cflowdata[d] = {}
             for iss in all_issues:
                 st = iss.statusAtDate(d)
-                if st is not None:
-                    if st not in list(cflowdata[d].keys()):
-                        cflowdata[d][st] = 1
-                    else:
-                        cflowdata[d][st] = cflowdata[d][st] + 1
+                if st:
+                    rows.append({
+                        'date': d,
+                        'issuekey': iss.key,
+                        'status': st
+                    })
+            for s in status_list:
+                srows.append({
+                    'date': d,
+                    'status': s
+                })
 
-        def group_function(issue, d):
-            return issue.statusAtDate(d)
+        # Set the base for all values to be filled
+        basic_df = pd.DataFrame(srows, columns=['date', 'status'])
 
-        (allgroups, cflowdata) = period.analyse_group(all_issues, date_list, group_function)
-        newlabels = []
+        # Set the dataframe with status for issue per date
+        dataframe = pd.DataFrame(rows, columns=['date', 'issuekey', 'status'])
+        # Groupby: this will give us ('date', 'status', 'key')
+        # Use as_index=False to prevent ('date','status') to be set as Index
+        # Count instances. 'issuekey' will be used as the column name for the counted instances
+        count_df = dataframe.groupby(['date', 'status'], as_index=False).count()
+
+        # left join base of values to be filled with actual values and fill resulting nan with 0
+        output_df = pd.merge(basic_df, count_df, how='left').fillna({'issuekey': 0})
+
         xs = []
         ys = []
-        for g in allgroups:
-            newlabels.append(g)
-            xs.append(date_list)
-            res_for_group = []
-            for d in date_list:
-                res_for_group.append(cflowdata[d][g])
-            ys.append(res_for_group)
+        for s in status_list:
+            condition = output_df['status'] == s
+            xs.append(list(map(lambda x: x.date(), output_df[condition]['date'].tolist())))
+            ys.append(output_df[condition]['issuekey'].tolist())
+
         cumulative_flow_chart = self.createAreaLineChart(xs=xs, ys=ys,
-                                                       labels=newlabels, title="Cumulative Flow")
+                                                       labels=status_list, title="Cumulative Flow")
         res = dict(title=self.title, post=cumulative_flow_chart)
         return res
 
