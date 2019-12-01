@@ -21,6 +21,7 @@ STATIC_URL = '/static/'
 # Settings for Sweep
 DEFAULT_CONFIG_FILE = '../../sweep.yaml'
 DEFAULT_VERBOSITY = 0
+
 # ************************************************************************
 
 # We set the variable 'config' as a global inside this module, so it can be read from the entire application
@@ -75,7 +76,7 @@ class Config(object):
         configured_plugins = list(map(lambda x: x['cname'], self.getPlugins()))
         for cp in configured_plugins:
             if cp not in app.plugin_modules.keys():
-                print("Configured plugin '%s' is not available. Check configured and available plugins" % cp)
+                app.error("Configured plugin '%s' is not available. Check configured and available plugins" % cp)
 
     def getPlugins(self):
         d = self.config['plugins']['sections']
@@ -219,6 +220,15 @@ class App(object):
     '''
     Application singleton.
     '''
+    HEADER = '\033[95m'
+    OKBLUE = '\033[94m'
+    OKGREEN = '\033[92m'
+    WARNING = '\033[93m'
+    FAIL = '\033[91m'
+    ENDC = '\033[0m'
+    BOLD = '\033[1m'
+    UNDERLINE = '\033[4m'
+
     def __init__(self, verbosity=0):
         '''Load all plugin classes'''
         self.verbosity = verbosity
@@ -262,7 +272,19 @@ class App(object):
         '''
         if level <= self.verbosity:
             print(message)
-    
+
+    def warning(self, message):
+        '''
+        Log warning to console.
+        '''
+        print("%sWarning: %s%s" % (self.WARNING, message, self.ENDC))
+
+    def error(self, message):
+        '''
+        Log error to console.
+        '''
+        print("%sError: %s%s" % (self.FAIL, message, self.ENDC))
+
 
 if __name__ == '__main__':
     c = Config(None)
