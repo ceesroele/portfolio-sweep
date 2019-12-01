@@ -10,6 +10,7 @@ import jira
 import atlassian
 import datetime
 import pickle
+import pprint
 
 # *** Configuration: default settings ***********************************
 
@@ -33,7 +34,7 @@ class Config(object):
         '''
         Read configuration file at relative position
         '''
-        script_dir = os.path.dirname(__file__) #<-- absolute dir the script is in
+        script_dir = os.path.dirname(__file__) # <-- absolute dir the script is in
         abs_file_path = os.path.join(script_dir, filename)
         with open(abs_file_path, 'r') as stream:
             config = yaml.load(stream, 
@@ -42,6 +43,7 @@ class Config(object):
         self.config = config
         self.persist = PersistConfig(self)
         self.loadFields()
+        self.loadStatus()
         self.printConfiguration()
 
     def printConfiguration(self):
@@ -60,6 +62,7 @@ class Config(object):
         app.console("* Portfolio: %s" % (self.getPortfolio(),), 0)
         app.console("* Input mode: %s" % (inputmode,), 0)
         app.console("* Loaded fields: %s" % (", ".join(self.fields.keys()),), 2)
+        app.console("* Loaded statuses: %s" % (", ".join(self.statuses),), 0)
         app.console("* Loaded plugins: %s" % ", ".join(self.config['plugins']['sections'].keys()), 0)
         app.console("* Report directory: %s" % (self.getReportDirectory(),), 0)
 
@@ -110,6 +113,20 @@ class Config(object):
             for f in all_fields:
                 self.fields[f['id']] = f
             self.persist.saveConfig(key="fields", updated=None, configdata=self.fields)
+
+    def loadStatus(self, project_id="PLAN", issuetype="Story"):
+        '''Hardcoded for now to get statuses for project PLAN and issuetype Story'''
+        if hasattr(self, 'statuses'):
+            return self.statuses
+        else:
+            res = []
+            lst = self.getAtlassianJira().get_status_for_project(project_id)
+            for a in lst:
+                if a['name'] == issuetype:
+                    res = list(map(lambda x: x['name'], a['statuses']))
+                    self.statuses = res
+                    break
+            return res
 
     def loadingMode(self):
         loadingMode = self.config['loading']['mode']
