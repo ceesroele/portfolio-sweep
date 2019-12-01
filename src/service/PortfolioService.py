@@ -123,7 +123,7 @@ class PortfolioService(object):
                         epicData.issues = epicDataIssues
                         epics.append(epicData)
                     else:
-                        print("type = '%s'" % (outwardIssue.issuetype,))
+                        print("Outward issue, unhandled type: '%s'" % outwardIssue.issuetype)
                 if hasattr(link, "inwardIssue"):
                     inwardIssue = link.inwardIssue
                     print("\tInward: " + inwardIssue.key)

@@ -18,6 +18,8 @@ reports:
 
 plugins:
   sections:
+    HelloWorldPlugin:
+      title: Hi there!
     <classname of Plugin A>:
       title: <title of chart A>
     <classname of Plugin B>:

@@ -13,7 +13,6 @@ import traceback
 from flask_table import Table, Col, LinkCol
 import pandas as pd
 import math
-import pprint
 
 class AbstractPlugin(object):
     '''
@@ -49,10 +48,10 @@ class AbstractPlugin(object):
             traceback.print_tb(err.__traceback__)
             print("Ignoring this exception and continuing")
         end = datetime.datetime.now()
-        print("\nRuntime for '%s': %s" % (self.title, end-start))
+        print("Runtime for '%s': %s" % (self.title, end-start))
         return res
 
-    def createTable(self, table_class, headers=None,values=None):
+    def createTable(self, table_class, headers=None, values=None):
         if headers and values:
             lst = []
             for v in values:
@@ -315,7 +314,7 @@ class TreeMapPlugin(AbstractPlugin):
                     else:
                         vs.append(defaultHours)
                 vs.append(defaultHours)
-        tree_map = self.createTreeMap(labels=ls,parents=ps,values=vs)
+        tree_map = self.createTreeMap(labels=ls, parents=ps, values=vs)
         res = dict(
             title=self.title,
             post=tree_map
@@ -348,7 +347,8 @@ class BurnupPlugin(AbstractPlugin):
 class TimeSpentPlugin(AbstractPlugin):
     '''Create a chart displaying how much time was estimated and how much as spent at the time of closing an issue.'''
     def goDoit(self):
-        all_issues = self.initiative.traverse_recursive(lambda x: str(x.issuetype) == "Task")
+        # all_issues = self.initiative.traverse_recursive(lambda x: str(x.issuetype) == "Task")
+        all_issues = self.initiative.traverse_recursive()
         closing_dates = []
 
         if all_issues:

@@ -20,7 +20,7 @@
 ### Second iteration
 
 1. General application
-    - [ ] Use pandas for data transfer between collection and visualization for one chart
+    - [x] Use pandas for data transfer between collection and visualization for one chart
     - [ ] Based on experience with first chart: use pandas for all current charts where this makes sense
     - [ ] Create a new chart straight from pandas
 

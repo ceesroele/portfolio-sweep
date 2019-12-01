@@ -10,7 +10,9 @@ import jira
 import atlassian
 import datetime
 import pickle
-import pprint
+import importlib
+import re
+import inspect
 
 # *** Configuration: default settings ***********************************
 
@@ -45,6 +47,7 @@ class Config(object):
         self.loadFields()
         self.loadStatus()
         self.printConfiguration()
+        self.check_configuration()
 
     def printConfiguration(self):
         '''
@@ -63,8 +66,16 @@ class Config(object):
         app.console("* Input mode: %s" % (inputmode,), 0)
         app.console("* Loaded fields: %s" % (", ".join(self.fields.keys()),), 2)
         app.console("* Loaded statuses: %s" % (", ".join(self.statuses),), 0)
-        app.console("* Loaded plugins: %s" % ", ".join(self.config['plugins']['sections'].keys()), 0)
+        app.console("* Loaded plugins: %s" % ", ".join(app.plugin_modules.keys()), 0)
+        app.console("* Configured plugins: %s" % ", ".join(self.config['plugins']['sections'].keys()), 0)
         app.console("* Report directory: %s" % (self.getReportDirectory(),), 0)
+
+    def check_configuration(self):
+        # check if all configured plugins are actually available
+        configured_plugins = list(map(lambda x: x['cname'], self.getPlugins()))
+        for cp in configured_plugins:
+            if cp not in app.plugin_modules.keys():
+                print("Configured plugin '%s' is not available. Check configured and available plugins" % cp)
 
     def getPlugins(self):
         d = self.config['plugins']['sections']
@@ -209,9 +220,43 @@ class App(object):
     Application singleton.
     '''
     def __init__(self, verbosity=0):
+        '''Load all plugin classes'''
         self.verbosity = verbosity
+        self.plugin_modules = self.load_plugins()
 
-    def console(self,message,level=0):
+    def load_plugins(self):
+        '''Load all available plugins and return them as a dictionary {'<classname>': <class>}'''
+        pdict = {}
+        # Define, call, and add results for each plugin
+        script_dir = os.path.dirname(__file__) # <-- absolute dir the script is in
+
+        # Get plugins from the plugin/custom directory (each plugin in its own module with the same name)
+        abs_file_path = os.path.join(script_dir, "plugin/custom")
+        for p in filter(lambda x: re.match(".*Plugin.py", x),  os.listdir(abs_file_path)):
+            cname = p[0:-3]
+            module_name = "plugin.custom.%s" % cname
+            module = importlib.import_module(module_name)
+            if hasattr(module, cname):
+                pdict[cname] = getattr(module, cname)
+            else:
+                raise AttributeError("Failed to find class '%s' in module '%s'" % (cname, module_name))
+
+        # Now checking standard plugins
+        module_name = "plugin.Plugin"
+        module = importlib.import_module(module_name)
+        for cname, class_ in inspect.getmembers(module, inspect.isclass):
+            if re.match(".*Plugin", cname):
+                pdict[cname] = class_
+
+        return pdict
+
+    def get_plugin(self, cname):
+        if cname in self.plugin_modules.keys():
+            return self.plugin_modules[cname]
+        else:
+            raise ModuleNotFoundError("Failed to find configured plugin '%s'. Check your configuration!" % cname)
+
+    def console(self, message, level=0):
         '''
         Log to console, depending on verbosity
         '''

@@ -5,14 +5,8 @@ Created on Sep 11, 2019
 '''
 import Config
 from jinja2 import Environment, PackageLoader
-import plotly.graph_objects as go
-import plotly.offline
-from service.BucketService import TimeBucket, Period
-from data.JiraObjectData import jiraDate2Datetime
 import datetime
 from pathlib import Path
-from plugin.Plugin import DetailsPlugin, IssuesPlugin, IssueTypesPlugin, TreeMapPlugin, CumulativeFlowPlugin, BurnupPlugin
-import importlib
 import shutil
 import os
 
@@ -47,15 +41,13 @@ class ReportService(object):
         #   post (mandatory)
         #   morelink
         posts = []
-        
+
         # Define, call, and add results for each plugin
-        module_name = "plugin.Plugin"
-        plugin_classes = Config.config.getPlugins()
-        module = importlib.import_module(module_name)
-        for p in plugin_classes:
+        configured_plugin_classes = Config.config.getPlugins()
+        for p in configured_plugin_classes:
             cname = p['cname']
             title = p['title']
-            class_ = getattr(module, cname)
+            class_ = Config.app.get_plugin(cname)
             instance = class_(title=title, initiative=initiative)
             posts.append(instance.go())
 
