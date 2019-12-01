@@ -219,6 +219,9 @@ class PersistConfig(object):
 class App(object):
     '''
     Application singleton.
+
+    Provides simple colored console messages that may not work on all platforms.
+    Alternatively: https://github.com/tartley/colorama
     '''
     HEADER = '\033[95m'
     OKBLUE = '\033[94m'
