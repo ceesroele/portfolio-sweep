@@ -17,6 +17,7 @@ class TimeBucket(object):
         '''
         self.config = config
         self.issues = issues
+
     def allocate(self, criterion):
         lastWeek = datetime.datetime(2019,10,25)
         for iss in self.issues:
@@ -33,6 +34,7 @@ class TimeBucket(object):
 #            else:
 #                print("newer %s: %s" % (iss.key, date_time_obj))
             pass
+
     def cumulative(self, dictionary):
         '''
         Count up the values in the dictionary, that is, to every next higher value, the sum of all previous values is added.
@@ -53,11 +55,12 @@ class Period(object):
     '''
     def __init__(self):
         pass
+
     def datelist(self, issues):
         (start, end) = self.interval(issues)
-        print("start=%s; end=%s" % (start,end))
         end = datetime.datetime.now()
         return self.generate(start,end)
+
     def generate(self, start, end):
         '''
         Generate list of periods (dates) based on start date and end date.
@@ -77,6 +80,7 @@ class Period(object):
         d = lst[len(lst)-1]
         lst[len(lst)-1] = datetime.datetime(d.year, d.month, d.day, 23, 59, 59)
         return lst
+
     def interval(self, issues):
         start = datetime.datetime.now()
         end = datetime.datetime(1970,1,1)
@@ -87,8 +91,8 @@ class Period(object):
                 end = iss.created
         if start > end:
             start = end
-        print("Start = %s; End = %s" % (start, end))
         return (start,end)
+
     def interval_dates(self, dates):
         dates.sort()
         start = min(dates)
