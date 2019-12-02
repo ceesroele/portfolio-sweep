@@ -64,6 +64,8 @@ class AbstractPlugin(object):
             return table.__html__()
 
     def createPieChart(self, dataframe, title=None):
+        print("Create pie chart:")
+        print(dataframe)
         labels = dataframe['issuetype'].tolist()
         values = dataframe['count'].tolist() # FIXME: now 'key' is set automatically as column name, set it manually
         fig = go.Figure(data=[go.Pie(labels=labels, values=values)])
@@ -127,59 +129,27 @@ class AbstractPlugin(object):
     def createMultiLineMap(self, dataframe, title=None):
         '''
         Create line chart with multiple lines
-        :param dataframe contains the data of all lines, with 'data' being the key
+        :param dataframe contains a column with dates ('date') and in the other columns the data of all lines
         '''
         if dataframe.empty:
             return ""
         else:
-            maxvalue = 0
-            # {<column_name>: {'dates': [ ... ], 'values': [ ... ]} }
-            d = {}
-            for index, row in dataframe.iterrows():
-                for c in dataframe.columns[1:]:
-                    if isinstance(row[c], float) and not math.isnan(row[c]):
-                        # get the maximum value for setting the maximum of the y-axis of the diagram
-                        if row[c] > maxvalue:
-                            maxvalue = row[c]
-                        if c not in d.keys():
-                            d[c] = {'dates': [row['date'].date()], 'values': [row[c]]}
-                        else:
-                            d[c]['dates'].append(row['date'].date())
-                            d[c]['values'].append(row[c])
-
-            maxvalue += 1
             fig = go.Figure()
             if title:
                 fig.update_layout(title_text=title)
 
-            for label in d.keys():
+            # Loop over the columns with data, drop NaN, and draw the line for the column
+            for c in dataframe.columns[1:]:
+                subframe = dataframe[['date', c]].dropna()
+                dates = list(map(lambda x: x.date(), subframe['date']))
+                values = subframe[c]
                 fig.add_trace(go.Scatter(
-                    x=d[label]['dates'],
-                    y=d[label]['values'],
-                    name=label
-                ))
+                            x=dates,
+                            y=values,
+                            name=c
+                        ))
 
-            fig.update_layout(yaxis_range=[0, maxvalue+1], showlegend=True)
-            presult = plotly.offline.plot(fig, config={"displayModeBar": False},
-                                          show_link=False,
-                                          include_plotlyjs=False,
-                                          output_type='div')
-            return presult
-
-    def createLineMap(self,x=[],y=[],title=None):
-        if not y:
-            return ""
-        else:
-            maxvalue = max(y)+1  
-            fig = go.Figure()
-            fig.add_trace(go.Scatter(
-                x=x,
-                y=y,
-                name="foobar"
-                ))
-            if title:
-                fig.update_layout(title_text=title)
-            fig.update_layout(yaxis_range=[0, maxvalue], showlegend=True)
+            fig.update_layout(showlegend=True)
             presult = plotly.offline.plot(fig, config={"displayModeBar": False},
                                           show_link=False,
                                           include_plotlyjs=False,
