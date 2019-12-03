@@ -13,15 +13,19 @@ class JiraObjectData(object):
     '''
     def __init__(self, jiraIssue=None):
         self._jiraIssue = jiraIssue
+
     def getType(self):
         return self.issuetype
+
     def getStructure(self):
         '''
         The structure of a data object is an evaluation of its string representation
         '''
         return eval(self.__str__())
+
     def traverse(self):
         return None
+
     def dict(self):
         '''
         Relevant fields as dictionary with values all as strings
@@ -35,6 +39,7 @@ class JiraObjectData(object):
                 print("Key doesn't exist: "+k)
                 print(self._jiraIssue.fields.__dict__)
         return res
+
     def links(self):
         '''
         Return dictionary with lists of 'inwards' and 'outwards' issues. List elements are tuples with key and link name.
@@ -53,7 +58,8 @@ class JiraObjectData(object):
             else:
                 print("Neither outward nor inward issue for %s" % link.__dict__)
         return {'inwards': inwards, 'outwards': outwards}
-    def statusChangedTo(self,status):
+
+    def statusChangedTo(self, status):
         '''
         Return date at which the issue's status changed to 'status' or None if it never reached it.
         FIXME: deal with original status (now it is missed!)
@@ -65,10 +71,10 @@ class JiraObjectData(object):
                 if item.field == 'status':
                     if item.toString == status:
                         #print('Date:' + history.created + ' From:' + item.fromString + ' To:' + item.toString)
-                        return history.created
+                        return jiraDate2Datetime(history.created)
         return None
  
-    def statusAtDate(self,d):
+    def statusAtDate(self, d):
         '''
         Return the status of an issue at a given date
         '''
@@ -123,6 +129,7 @@ class JiraObjectData(object):
             else:
                 raise KeyError("Unhandled type %s for field %s" % (iType,name))
         return res
+
     def __str__(self):
         '''
         The string representation of the object gives a representation of the data object's structure.

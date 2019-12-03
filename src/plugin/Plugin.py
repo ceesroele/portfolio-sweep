@@ -29,13 +29,26 @@ class AbstractPlugin(object):
         all_issues = self.initiative.traverse_recursive(withepics=True)
         rows = []
         for iss in all_issues:
+            cycle = None
+            closed = None
+            if str(iss.status) == 'Done':
+                # FIXME: currently using hardcoded status
+                starting = iss.created
+                selected_for_development = iss.statusChangedTo("Selected for Development")
+                if selected_for_development:
+                    starting = selected_for_development
+                closed = iss.statusChangedTo("Done")
+                cycle = (closed - starting).total_seconds()/3600 # represent cycle time in hours
             rows.append({
                 'key': iss.key,
                 'issuetype': str(iss.issuetype),
                 'timeoriginalestimate': iss.timeoriginalestimate,
-                'timespent': iss.timespent
+                'timespent': iss.timespent,
+                'created': iss.created,
+                'closed': closed,
+                'cycle': cycle
             })
-        df = pd.DataFrame(rows, columns=['key', 'issuetype', 'timeoriginalestimate', 'timespent'])
+        df = pd.DataFrame(rows, columns=['key', 'issuetype', 'timeoriginalestimate', 'timespent', 'created', 'closed', 'cycle'])
         return df
 
     def go(self):
@@ -155,6 +168,26 @@ class AbstractPlugin(object):
                                           include_plotlyjs=False,
                                           output_type='div')
             return presult
+
+    def createScatterMap(self, dataframe, title=None):
+        '''dataframe contains [key, issuetype, closed, cycle]'''
+        fig = go.Figure()
+        # Create a group per issuetype
+        for it in dataframe.issuetype.unique():
+            condition = dataframe['issuetype'] == it
+            df = dataframe[condition]
+            fig.add_trace(go.Scatter(x=df['closed'],
+                                     y=df['cycle'],
+                                     name=it,
+                                     mode='markers',
+                                     showlegend=True,
+                                     text=df['key']))  # hover text goes here
+
+        presult = plotly.offline.plot(fig, config={"displayModeBar": False},
+                                  show_link=False,
+                                  include_plotlyjs=False,
+                                  output_type='div')
+        return presult
 
     def __str__(self):
         return "This is a %s plugin for %s" % (type(self).__name__, self.initiative.key)
@@ -295,7 +328,7 @@ class TreeMapPlugin(AbstractPlugin):
 class BurnupPlugin(AbstractPlugin):
     '''Create a burnup chart'''
     def goDoit(self):
-        all_issues = self.initiative.traverse_recursive(lambda x: str(x.issuetype) == "Task")
+        all_issues = self.initiative.traverse_recursive()
 
         if all_issues:
             period = Period()
@@ -306,7 +339,7 @@ class BurnupPlugin(AbstractPlugin):
             def closingmatch(issue):
                 closingDate = issue.statusChangedTo('Done')
                 if closingDate:
-                    return jiraDate2Datetime(closingDate)
+                    return closingDate
 
             closing_df = period.analyse_monotonic(all_issues, closingmatch, field_name="closed")
             df_total = pd.merge(created_df, closing_df, how="outer", on="date").sort_values(by='date')
@@ -314,12 +347,18 @@ class BurnupPlugin(AbstractPlugin):
             return dict(title=self.title, post=line_map)
 
 
+class CycleTimePlugin(AbstractPlugin):
+    '''Create a cycle time scatter chart'''
+    def goDoit(self):
+        data = self.initiative_df.dropna(subset=['cycle'])
+        scatter_map = self.createScatterMap(data, title=self.title)
+        return dict(title=self.title, post=scatter_map)
+
 class TimeSpentPlugin(AbstractPlugin):
     '''Create a chart displaying how much time was estimated and how much as spent at the time of closing an issue.'''
     def goDoit(self):
         # all_issues = self.initiative.traverse_recursive(lambda x: str(x.issuetype) == "Task")
         all_issues = self.initiative.traverse_recursive()
-        closing_dates = []
 
         if all_issues:
             period = Period()
@@ -339,7 +378,7 @@ class TimeSpentPlugin(AbstractPlugin):
             def closingmatch(issue):
                 closingDate = issue.statusChangedTo('Done')
                 if closingDate:
-                    return jiraDate2Datetime(closingDate)
+                    return closingDate
 
             def timespent(issue):
                 value = issue.timespent
