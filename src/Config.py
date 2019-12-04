@@ -69,7 +69,11 @@ class Config(object):
         app.console("* Loaded statuses: %s" % (", ".join(self.statuses),), 0)
         app.console("* Loaded plugins: %s" % ", ".join(app.plugin_modules.keys()), 0)
         app.console("* Configured plugins: %s" % ", ".join(self.config['plugins']['sections'].keys()), 0)
-        app.console("* Report directory: %s" % (self.getReportDirectory(),), 0)
+        if self.get("/reports/templatedir"):
+            app.console("* Template input directory: %s (file system)" % self.get("/reports/templatedir"), 0)
+        else:
+            app.console("* Template input directory: service.web (package)", 0)
+        app.console("* Report output directory: %s" % (self.getReportDirectory(),), 0)
 
     def check_configuration(self):
         # check if all configured plugins are actually available
@@ -152,6 +156,20 @@ class Config(object):
 
     def getReportDirectory(self):
         return self.config['reports']['directory']
+
+    def get(self, path):
+        '''Parse path and return configuration for it.
+        Example: '/reports/directory becomes self.config['reports']['directory']'''
+        # split path and filter out empty values
+        keys = list(filter(lambda x: x, path.split("/")))
+        cur = self.config
+        for k in keys:
+            if k in cur.keys():
+                cur = cur[k]
+            else:
+                app.console("Failed to read configuration value: %s from %s" % (k, path), 1)
+                return None
+        return cur
 
     def __str__(self):
         return str(self.config)

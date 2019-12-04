@@ -4,7 +4,7 @@ Created on Sep 11, 2019
 @author: cjr
 '''
 import Config
-from jinja2 import Environment, PackageLoader
+from jinja2 import Environment, PackageLoader, FileSystemLoader
 import datetime
 from pathlib import Path
 import shutil
@@ -20,8 +20,15 @@ class ReportService(object):
         '''
         Constructor
         '''
+        templatedir = Config.config.get("/reports/templatedir")
+        if templatedir:
+            print("Loading templates from filesystem: %s" % templatedir)
+            loader = FileSystemLoader(templatedir, followlinks=True)
+        else:
+            print("Loading templates from package: service.web")
+            loader = PackageLoader('service', 'web')
         self.env = Environment(
-            loader=PackageLoader('service', 'web'),
+            loader=loader,
             autoescape=False)
 #            autoescape=select_autoescape(['html', 'xml'])
 #        )

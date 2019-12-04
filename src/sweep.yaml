@@ -14,7 +14,8 @@ loading:
   mode: {jira|mixed|database}
 
 reports:
-  directory: <your directory>
+  # templatedir: <directory in which templates are placed, default is loading templates from package service.web>
+  directory: <your directory for writing generated reports>
 
 plugins:
   sections:
