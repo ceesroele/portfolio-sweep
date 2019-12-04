@@ -103,7 +103,7 @@ class AbstractPlugin(object):
                                           output_type='div')
         return presult
     
-    def createAreaLineChart(self, xs=[], ys=[], labels=[], title=None):
+    def createAreaLineChart(self, xs=[], ys=[], labels=[], title=None, yaxes=None):
         '''
         Create line chart with multiple lines
         xs, ys, and labels are lists of lists, each representing one line
@@ -133,13 +133,15 @@ class AbstractPlugin(object):
                         ))
 
             fig.update_layout(yaxis_range=[0, maxvalue], showlegend=True)
+            if yaxes:
+                fig.update_yaxes(**yaxes)
             presult = plotly.offline.plot(fig, config={"displayModeBar": False},
                                           show_link=False,
                                           include_plotlyjs=False,
                                           output_type='div')
             return presult
 
-    def createMultiLineMap(self, dataframe, title=None):
+    def createMultiLineMap(self, dataframe, title=None, yaxes=None):
         '''
         Create line chart with multiple lines
         :param dataframe contains a column with dates ('date') and in the other columns the data of all lines
@@ -163,14 +165,17 @@ class AbstractPlugin(object):
                         ))
 
             fig.update_layout(showlegend=True)
+            if yaxes:
+                fig.update_yaxes(**yaxes)
             presult = plotly.offline.plot(fig, config={"displayModeBar": False},
                                           show_link=False,
                                           include_plotlyjs=False,
                                           output_type='div')
             return presult
 
-    def createScatterMap(self, dataframe, title=None):
-        '''dataframe contains [key, issuetype, closed, cycle]'''
+    def createScatterMap(self, dataframe, title=None, yaxes=None):
+        '''dataframe contains [key, issuetype, closed, cycle]
+        :param yaxes Dictionary with arguments for setting the y-axis'''
         fig = go.Figure()
         # Create a group per issuetype
         for it in dataframe.issuetype.unique():
@@ -183,6 +188,10 @@ class AbstractPlugin(object):
                                      showlegend=True,
                                      text=df['key']))  # hover text goes here
 
+        # Use logarithmic scale to deal with values that are so high that more regular values are pushed to zero
+        #fig.update_yaxes(type="log", title_text="Value A
+        if yaxes:
+            fig.update_yaxes(**yaxes)
         presult = plotly.offline.plot(fig, config={"displayModeBar": False},
                                   show_link=False,
                                   include_plotlyjs=False,
@@ -251,7 +260,7 @@ class AggregateDataPlugin(AbstractPlugin):
 
 
 class IssuesPlugin(AbstractPlugin):
-    '''Create a table with an overview of the issues of the Initiatve'''
+    '''Create a table with an overview of the issues of the Initiative'''
     def goDoit(self):
         class IssuesTable(Table):
             key = RawCol('Key')
@@ -343,7 +352,7 @@ class BurnupPlugin(AbstractPlugin):
 
             closing_df = period.analyse_monotonic(all_issues, closingmatch, field_name="closed")
             df_total = pd.merge(created_df, closing_df, how="outer", on="date").sort_values(by='date')
-            line_map = self.createMultiLineMap(df_total, title=self.title)
+            line_map = self.createMultiLineMap(df_total, title=self.title, yaxes=dict(title_text='Number of issues'))
             return dict(title=self.title, post=line_map)
 
 
@@ -351,8 +360,10 @@ class CycleTimePlugin(AbstractPlugin):
     '''Create a cycle time scatter chart'''
     def goDoit(self):
         data = self.initiative_df.dropna(subset=['cycle'])
-        scatter_map = self.createScatterMap(data, title=self.title)
+        scatter_map = self.createScatterMap(data, title=self.title,
+                                            yaxes=dict(title_text='Hours', type='log'))
         return dict(title=self.title, post=scatter_map)
+
 
 class TimeSpentPlugin(AbstractPlugin):
     '''Create a chart displaying how much time was estimated and how much as spent at the time of closing an issue.'''
@@ -403,7 +414,7 @@ class TimeSpentPlugin(AbstractPlugin):
             estimate_df = pd.DataFrame(rows, columns=['date', 'total estimate'])
             df_total = pd.merge(df_total, estimate_df, how="outer").sort_values(by='date')
 
-            line_map = self.createMultiLineMap(df_total, title=self.title)
+            line_map = self.createMultiLineMap(df_total, title=self.title, yaxes=dict(title_text='Hours'))
             return dict(title=self.title, post=line_map)
 
 
@@ -462,8 +473,11 @@ class CumulativeFlowPlugin(AbstractPlugin):
             xs.append(list(map(lambda x: x.date(), output_df[condition]['date'].tolist())))
             ys.append(output_df[condition]['issuekey'].tolist())
 
-        cumulative_flow_chart = self.createAreaLineChart(xs=xs, ys=ys,
-                                                       labels=status_list, title="Cumulative Flow")
+        cumulative_flow_chart = self.createAreaLineChart(xs=xs,
+                                                         ys=ys,
+                                                         labels=status_list,
+                                                         title="Cumulative Flow",
+                                                         yaxes=dict(title_text='Number of issues'))
         res = dict(title=self.title, post=cumulative_flow_chart)
         return res
 
