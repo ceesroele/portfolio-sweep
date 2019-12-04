@@ -26,6 +26,7 @@ class AbstractPlugin(object):
 
     def load_initiative_dataframe(self, initiative):
         '''Load a dataframe with standard information on the iniative'''
+        print("load initiative dataframe for %s. type=%s" % (initiative.key, type(initiative)))
         all_issues = self.initiative.traverse_recursive(withepics=True)
         rows = []
         for iss in all_issues:

@@ -17,6 +17,7 @@ import jira.resources
 from data.JiraObjectData import PortfolioData, InitiativeData, EpicData, IssueData, jira2DataObject
 import sys
 import datetime
+import Config
 
 
 
@@ -34,14 +35,15 @@ class PortfolioService(object):
         self.jira = config.getJira()
         self.persist = Persist(config)
     def loadPortfolio(self):
-        if self.config.loadingMode() == 'jira':
+        loading_mode = Config.config.get("/loading/mode", mandatory=True)
+        if loading_mode == 'jira':
             return self.loadPortfolioJira()
-        elif self.config.loadingMode() == 'database':
+        elif loading_mode == 'database':
             return self.loadPortfolioDatabase()
-        elif self.config.loadingMode() == 'mixed':
+        elif loading_mode == 'mixed':
             return self.loadPortfolioMixed()
         else:
-            print("Unknown loading mode: %s\n[loading: [mode={..}]] in %s " % (self.config.loadingMode(),self.config.configfile))
+            print("Unknown loading mode: %s\n[loading: [mode={..}]] in %s " % (loading_mode, Config.config.configfile))
             sys.exit(0)
             
     def loadPortfolioJira(self):
@@ -93,9 +95,10 @@ class PortfolioService(object):
             initiativeData = InitiativeData(jiraIssue=initiative, epics=epics)
             initiativeDataList.append(initiativeData)
             self.persist.store(initiativeData)
-        pd = PortfolioData(self.config.getPortfolio(), initiativeDataList)
+        pd = PortfolioData(Config.config.get("/portfolio/name"), initiativeDataList)
         print("Loaded portfolio in %s" % (datetime.datetime.now()-start),)
         return pd
+
     def loadPortfolioDatabase(self):
         #initiatives = self.jira.search_issues('project=PORT')
         start = datetime.datetime.now()
@@ -130,7 +133,7 @@ class PortfolioService(object):
             #initiativeData = InitiativeData(jiraIssue=initiative, epics=epics)
             initiative.epics = epics
             initiativeDataList.append(initiative)
-        pd = PortfolioData(self.config.getPortfolio(), initiativeDataList)
+        pd = PortfolioData(Config.config.get("/portfolio/name"), initiativeDataList)
         print("Loaded portfolio in %s" % (datetime.datetime.now()-start),)
         return pd
 
@@ -145,7 +148,7 @@ class PortfolioService(object):
         return self.jira
 
     def issue(self, key, expand=None):
-        return self.jira.issue(key,expand=expand)
+        return self.jira.issue(key, expand=expand)
     
 class Persist(object):
     def __init__(self, config):
@@ -216,15 +219,24 @@ class Persist(object):
                 d = eval(issuestructure)
                 level = d['level']
                 x = jira.resources.Issue(None, None, raw_issue)
-                if level == 'initiative':
-                    print("Loading initiative %s: %s" % (key, issuestructure))
+                if level == 'saga':
+                    print("Loading saga %s: %s" % (key, issuestructure))
                     children = []
                     if 'children' in d.keys():
                         for k in d['children']:
                             children.append(self.load(key=k))
                     else:
                         print("No 'children' in dictionary %s" % d)
-                    result = InitiativeData(jiraIssue=x,epics=children)                   
+                    result = InitiativeData(jiraIssue=x, epics=children)
+                elif level == 'initiative':
+                        print("Loading initiative %s: %s" % (key, issuestructure))
+                        children = []
+                        if 'children' in d.keys():
+                            for k in d['children']:
+                                children.append(self.load(key=k))
+                        else:
+                            print("No 'children' in dictionary %s" % d)
+                        result = InitiativeData(jiraIssue=x, epics=children)
                 elif level == 'epic':
                     print("Loading epic %s: %s" %(key, issuestructure))
                     children = []
@@ -239,6 +251,7 @@ class Persist(object):
             c.close()
             conn.close()
             return result
+
     def loadInitiatives(self):
             conn = self.config.getDatabase()
             c = conn.cursor()
@@ -259,7 +272,7 @@ class Persist(object):
                         children.append(self.load(key=k))
                 else:
                     print("No 'children' in dictionary %s for initiative %s" % (d, key))
-                initiatives.append(InitiativeData(jiraIssue=x,epics=children))
+                initiatives.append(InitiativeData(jiraIssue=x, epics=children))
             return initiatives              
 
 if __name__ == 'main':

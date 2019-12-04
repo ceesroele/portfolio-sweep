@@ -55,15 +55,15 @@ class Config(object):
         Write configuration to console.
         '''
         global app
-        inputmode = self.loadingMode()
+        inputmode = self.get("/loading/mode", mandatory=True)
         if inputmode == 'jira':
-            inputmode += " (" + self.config['jira']['server']+")"
+            inputmode += " (" + self.get("/jira/server", mandatory=True) + ")"
         elif inputmode == 'database':
             inputmode += " (SQLite3 file: "+self.getDatabasePath()+")"
 
         app.console("Configuration:", 0)
         app.console("* Reading configuration from: %s (%s)" % (self.configfile,os.path.normpath(os.path.abspath(self.configfile))), 0)
-        app.console("* Portfolio: %s" % (self.getPortfolio(),), 0)
+        app.console("* Portfolio: %s" % self.get("/portfolio/name"), 0)
         app.console("* Input mode: %s" % (inputmode,), 0)
         app.console("* Loaded fields: %s" % (", ".join(self.fields.keys()),), 2)
         app.console("* Loaded statuses: %s" % (", ".join(self.statuses),), 0)
@@ -73,7 +73,7 @@ class Config(object):
             app.console("* Template input directory: %s (file system)" % self.get("/reports/templatedir"), 0)
         else:
             app.console("* Template input directory: service.web (package)", 0)
-        app.console("* Report output directory: %s" % (self.getReportDirectory(),), 0)
+        app.console("* Report output directory: %s" % self.get("/reports/directory", mandatory=True), 0)
 
     def check_configuration(self):
         # check if all configured plugins are actually available
@@ -94,24 +94,25 @@ class Config(object):
         jira client: https://pypi.org/project/jira/
         '''
         options = {
-            'server': self.config['jira']['server']
+            'server': self.get("/jira/server", mandatory=True)
         }
 
-        return jira.JIRA(options, basic_auth=(self.config['jira']['username'], self.config['jira']['token']))
+        return jira.JIRA(options, basic_auth=(self.get("/jira/username", mandatory=True),
+                                              self.get("/jira/token", mandatory=True)))
 
     def getAtlassianJira(self):
         '''
         atlassian client: https://pypi.org/project/atlassian-python-api/
         '''
         return atlassian.jira.Jira(
-            url=self.config['jira']['server'],
-            username=self.config['jira']['username'],
-            password=self.config['jira']['token']
+            url=self.get("/jira/server", mandatory=True),
+            username=self.get("/jira/username", mandatory=True),
+            password=self.get("/jira/token", mandatory=True)
             )
 
     def getDatabasePath(self):
-        filename = self.config['database']['filename']
-        path = self.config['database']['path']
+        filename = self.get("/database/filename", mandatory=True)
+        path = self.get("/database/path", mandatory=True)
         return os.path.join(path, filename)
 
     def getDatabase(self):
@@ -121,7 +122,7 @@ class Config(object):
         return sqlite3.connect(self.getDatabasePath())
 
     def loadFields(self):
-        if self.loadingMode() == 'database':
+        if self.get("/loading/mode", mandatory=True) == 'database':
             self.fields = self.persist.loadConfig("fields")
         else:
             self.fields = {}
@@ -144,28 +145,24 @@ class Config(object):
                     break
             return res
 
-    def loadingMode(self):
-        loadingMode = self.config['loading']['mode']
-        return loadingMode
-
-    def getPortfolio(self):
-        return self.config['portfolio']['name']
-
     def getFieldType(self, key):
         return self.fields[key]['schema']['type']
 
-    def getReportDirectory(self):
-        return self.config['reports']['directory']
-
-    def get(self, path):
+    def get(self, path, mandatory=False):
         '''Parse path and return configuration for it.
-        Example: '/reports/directory becomes self.config['reports']['directory']'''
+        Example: '/reports/directory becomes self.config['reports']['directory']
+        :param path Representation of indexes on YAML config as '/' separated path
+        :param mandatory Configuration must be set, otherwise a LookupError will be raised
+        '''
         # split path and filter out empty values
         keys = list(filter(lambda x: x, path.split("/")))
         cur = self.config
         for k in keys:
             if k in cur.keys():
                 cur = cur[k]
+            elif mandatory:
+                app.console("Failed to read configuration value: %s from %s" % (k, path), 0)
+                raise LookupError("Failed to read configuration value: %s from %s" % (k, path))
             else:
                 app.console("Failed to read configuration value: %s from %s" % (k, path), 1)
                 return None

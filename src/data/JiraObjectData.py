@@ -115,7 +115,7 @@ class JiraObjectData(object):
                 isField = True
                 res = self._jiraIssue.fields.__dict__[name]
         except KeyError:
-            raise AttributeError("Failed to find %s for %s" % (name,self._jiraIssue.key))
+            raise AttributeError("Failed to find %s for %s" % (name, self._jiraIssue.key))
         if isField:
             #print("Field type (%s) = %s" % (name, Config.config.getFieldType(name),))
             iType = Config.config.getFieldType(name)
@@ -158,10 +158,13 @@ class PortfolioData(JiraObjectData):
         self.initiatives = initiatives
         self.sagas = sagas
         super().__init__(jiraIssue=None)
+
     def getType(self):
         return "portfolio"
+
     def traverse(self):
         return self.initiatives
+
     def __str__(self):
         s = "{'level': 'portfolio', 'key': '"+self.name+"', 'children': ["
         s += ",".join(map(lambda x: "'"+x.key+"'", self.initiatives + self.sagas))

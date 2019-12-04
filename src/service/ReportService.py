@@ -88,7 +88,7 @@ class ReportService(object):
         return text
 
     def writeTemplate(self, filename, text):
-        dirname = Config.config.getReportDirectory()
+        dirname = Config.config.get("/reports/directory", mandatory=True)
         suffix = ".html"
         path = Path(dirname, filename).with_suffix(suffix)
         f = open(path,'w')
@@ -98,7 +98,7 @@ class ReportService(object):
 
     def copy_static_files(self):
         '''Copy the static files, e.g. *.css to the reporting directory'''
-        reporting_dir = Config.config.getReportDirectory()
+        reporting_dir = Config.config.get("/reports/directory", mandatory=True)
         static_files_subdir = "service/web/static"
         from_dir = os.path.join(os.getcwd(), static_files_subdir)
         to_dir = os.path.join(reporting_dir, "static")
