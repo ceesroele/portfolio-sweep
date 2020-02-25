@@ -44,7 +44,6 @@ class BurnupChart:
             f.close()
 
 
-
 if __name__ == '__main__':
     config = Config('../../sweep.yaml')
     portfolio = PortfolioService(config)

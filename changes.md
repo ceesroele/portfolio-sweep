@@ -1,5 +1,12 @@
 # Changes
 
+## Jupyter support
+
+Sweep now supports Jupyter notebook, effectively giving it a dataframe oriented interface to JIRA.
+
+An explanation with examples can be found in the following [notebook](src/notebook_to_jira.ipynb)
+
+
 ## Django - 24 Nov 2019
 
 Included Django. The application can now either be started from the command line, using Start.py,

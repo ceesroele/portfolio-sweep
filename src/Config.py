@@ -27,6 +27,7 @@ DEFAULT_VERBOSITY = 0
 # We set the variable 'config' as a global inside this module, so it can be read from the entire application
 config = None
 app = None
+objstore = None
 
 class Config(object):
     '''
@@ -177,7 +178,7 @@ class PersistConfig(object):
     Persist configuration objects
     '''
     def __init__(self,config):
-                # Create the database table
+        # Create the database table
         conn = config.getDatabase()
         c = conn.cursor()
 
@@ -196,7 +197,7 @@ class PersistConfig(object):
         c.close()
         conn.close()
 
-    def loadConfig(self,key=None):
+    def loadConfig(self, key=None):
         conn = self.config.getDatabase()
         c = conn.cursor()
         c.execute("select * from configdata where key = '%s'" % (key,))
@@ -214,7 +215,7 @@ class PersistConfig(object):
             configdata = pickle.loads(row[2])
             return configdata  
 
-    def saveConfig(self,key=None,updated=None, configdata=None):
+    def saveConfig(self, key=None, updated=None, configdata=None):
         if updated is None:
             updated = datetime.datetime.now()
         conn = self.config.getDatabase()
@@ -226,7 +227,7 @@ class PersistConfig(object):
             updated,
             pickle.dumps(configdata)
         ))
-        print('Inserted %s' % (configdata,))
+        #print('Inserted %s' % (configdata,))
         conn.commit()
         c.close()
         conn.close()

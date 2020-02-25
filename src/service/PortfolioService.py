@@ -220,31 +220,34 @@ class Persist(object):
                 level = d['level']
                 x = jira.resources.Issue(None, None, raw_issue)
                 if level == 'saga':
-                    print("Loading saga %s: %s" % (key, issuestructure))
+                    #print("Loading saga %s: %s" % (key, issuestructure))
                     children = []
                     if 'children' in d.keys():
                         for k in d['children']:
                             children.append(self.load(key=k))
                     else:
-                        print("No 'children' in dictionary %s" % d)
+                        #print("No 'children' in dictionary %s" % d)
+                        pass
                     result = InitiativeData(jiraIssue=x, epics=children)
                 elif level == 'initiative':
-                        print("Loading initiative %s: %s" % (key, issuestructure))
+                        #print("Loading initiative %s: %s" % (key, issuestructure))
                         children = []
                         if 'children' in d.keys():
                             for k in d['children']:
                                 children.append(self.load(key=k))
                         else:
-                            print("No 'children' in dictionary %s" % d)
+                            #print("No 'children' in dictionary %s" % d)
+                            pass
                         result = InitiativeData(jiraIssue=x, epics=children)
                 elif level == 'epic':
-                    print("Loading epic %s: %s" %(key, issuestructure))
+                    #print("Loading epic %s: %s" %(key, issuestructure))
                     children = []
                     if 'children' in d.keys():
                         for k in d['children']:
                             children.append(self.load(key=k))
                     else:
-                        print("No 'children' in dictionary %s" %d)
+                        #print("No 'children' in dictionary %s" %d)
+                        pass
                     result = EpicData(jiraIssue=x,issues=children)
                 else:
                     result = IssueData(jiraIssue=x)
@@ -264,7 +267,7 @@ class Persist(object):
                 issuetype = row[2]
                 issuestructure = row[3]
                 x = jira.resources.Issue(None, None, raw_issue)
-                print("Loading initiative: "+issuestructure)
+                #print("Loading initiative: "+issuestructure)
                 d = eval(issuestructure)
                 children = []
                 if 'children' in d.keys():
@@ -277,7 +280,3 @@ class Persist(object):
 
 if __name__ == 'main':
     pass
-            
-        
-        
-        

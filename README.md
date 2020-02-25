@@ -1,5 +1,12 @@
-# portfolio-sweep
-Portfolio Sweep - generate unified reports on a set of differently structured projects in Jira
+# sweep
+Sweep - generate unified reports on a set of differently structured projects in Jira
+
+### New: Jupyter support
+
+Sweep now supports JQL queries which result in a `QueryFrame`, which encapsulates several pandas `DataFrames`.
+This allows for more readable operations on the data and for interactive development with Jupyter notebooks.
+
+Check out the [example notebook](src/notebook_to_jira.ipynb)
 
 # Goal
 Create unified reports on work planned and done out of Jira for a whole portfolio.
@@ -12,6 +19,8 @@ Create unified reports on work planned and done out of Jira for a whole portfoli
 2. No navigation to reports needed (typical in Jira: go to project, go to reports, select the right report, select e.g. version, then see report)
 
 3. Have a single overview of progress for the entire portfolio
+
+4. Use Jupyter and pandas `DataFrames` for comfortable interactive development of new functionality.
 
 # Assumptions
 1. An extra Jira project can be created for project meta-data

@@ -26,7 +26,6 @@ class AbstractPlugin(object):
 
     def load_initiative_dataframe(self, initiative):
         '''Load a dataframe with standard information on the iniative'''
-        print("load initiative dataframe for %s. type=%s" % (initiative.key, type(initiative)))
         all_issues = self.initiative.traverse_recursive(withepics=True)
         rows = []
         for iss in all_issues:
@@ -291,6 +290,7 @@ class IssuesPlugin(AbstractPlugin):
             )
         return res
 
+
 class IssueTypesPlugin(AbstractPlugin):
     '''Create a piechart with issue types'''
     def goDoit(self):
@@ -474,6 +474,7 @@ class CumulativeFlowPlugin(AbstractPlugin):
             xs.append(list(map(lambda x: x.date(), output_df[condition]['date'].tolist())))
             ys.append(output_df[condition]['issuekey'].tolist())
 
+        output_df.plot.area(x='date')
         cumulative_flow_chart = self.createAreaLineChart(xs=xs,
                                                          ys=ys,
                                                          labels=status_list,

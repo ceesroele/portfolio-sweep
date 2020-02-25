@@ -31,13 +31,14 @@ class JiraObjectData(object):
         Relevant fields as dictionary with values all as strings
         '''
         res = {}
-        key_selection = ['summary','description','issuetype','created','updated','assignee','creator','timeoriginalestimate']
+        key_selection = ['summary', 'description', 'issuetype', 'created', 'updated',
+                         'assignee', 'creator', 'timeoriginalestimate', 'timespent']
         for k in key_selection:
             try:
                 res[k] = str(self._jiraIssue.fields.__dict__[k])
             except KeyError:
-                print("Key doesn't exist: "+k)
-                print(self._jiraIssue.fields.__dict__)
+                Config.app.error("Key doesn't exist: "+k)
+                Config.app.error('Available keys are: '+str(self._jiraIssue.fields.__dict__.keys()))
         return res
 
     def links(self):
@@ -100,6 +101,9 @@ class JiraObjectData(object):
         '''
         return jiraLink(self.key, title=title)
 
+    def __getitem__(self, item):
+        return self.__getattr__(item)
+
     def __getattr__(self, name):
         '''
         If no attribute is present, read it first from the encapsulated _jiraIssue, then from _jiraIssue.fields.
@@ -122,13 +126,46 @@ class JiraObjectData(object):
             if iType in ['string', 'array', 'number']:
                 # nothing to be done for these types
                 pass
-            elif iType in ['issuetype', 'status']:
+            elif iType in ['issuetype', 'status', 'user']:
                 res = str(res)
             elif iType == 'datetime':
                 res = jiraDate2Datetime(str(res))
             else:
                 raise KeyError("Unhandled type %s for field %s" % (iType,name))
         return res
+
+    def to_html(self):
+        """Represent the object in HTML format"""
+        s = """<div>\n<style scoped="">
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+    </style>"""
+        s += '<table border="1" class="dataframe">\n'
+        s += """  <thead>
+    <tr style="text-align: right;">
+      <th>field</th>
+      <th>value</th>
+    </tr>
+  </thead>
+"""
+        s += "<tbody>"
+        s += '<tr><td>key</td><td>{}</td></tr>'.format(self._jiraIssue.key)
+        for k, v in self.dict().items():
+            s += '<tr><td>{}</td><td>{}</td></tr>\n'.format(k, v)
+        s += '</tbody>\n</table>\n</div>'
+        return s
+
+    def _repr_html_(self):
+        return self.to_html()
 
     def __str__(self):
         '''
@@ -225,10 +262,9 @@ class InitiativeData(JiraObjectData):
     
 
 class EpicData(JiraObjectData):
-    '''
+    """
     Representing epic.
-    '''
-
+    """
 
     def __init__(self, jiraIssue=None, issues=None):
         '''
@@ -240,7 +276,8 @@ class EpicData(JiraObjectData):
         return self.issues
     def __str__(self):
         s = "{'level': 'epic', 'key': '"+self.key+"', 'children': ["
-        s += ",".join(map(lambda x: "'"+x.key+"'", self.issues))
+        if self.issues:
+            s += ",".join(map(lambda x: "'"+x.key+"'", self.issues))
         s += "]}"
         return s
     
@@ -282,5 +319,3 @@ def jiraLink(key,title=None):
     '''
     href = Config.config.config['jira']['server'] + "/browse/"+key
     return "<a href='%s'>%s</a>" % (href, key)
-
-        
