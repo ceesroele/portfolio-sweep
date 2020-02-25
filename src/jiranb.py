@@ -11,6 +11,7 @@ class jiranb(object):
         Config.app = Config.App(verbosity=Config.DEFAULT_VERBOSITY)
         Config.config = Config.Config(Config.DEFAULT_CONFIG_FILE)
         Config.persist = Persist(Config.config)
+        self.statuses = Config.config.statuses
 
     def jql(self, s, persist=False, errors=False):
         """

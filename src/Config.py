@@ -58,7 +58,7 @@ class Config(object):
         global app
         inputmode = self.get("/loading/mode", mandatory=True)
         if inputmode == 'jira':
-            inputmode += " (" + self.get("/jira/server", mandatory=True) + ")"
+            inputmode += " (Server=" + self.get("/jira/server", mandatory=True) + ")"
         elif inputmode == 'database':
             inputmode += " (SQLite3 file: "+self.getDatabasePath()+")"
 
