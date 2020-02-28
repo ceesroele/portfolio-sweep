@@ -18,16 +18,27 @@ You can install them with: pip install <name>
 2. Modify the settings in sweep.yaml
 
 
-# Run to generate HTML reports
+# Run
 
-    $ python3 Start.py
+There is no packaged installation, so for now, Sweep is just accessed from the ./src directory.
+
+## Run Jupyter notebook
+
+    .../src $ python3 jupyter lab
+
+Check out [notebook_to_jira.ipynb](notebook_to_jira.ipynb)
+
+
+## Run to generate HTML reports
+
+    .../src $ python3 Start.py
 
 or
 
-    $ python3
+    .../src $ python3
     >>> import Start
     >>> Start.main()
 
-# Run from Django
+## Run from Django
 
-    ./server $ python3 manage.py runserver
+    .../src/server $ python3 manage.py runserver

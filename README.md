@@ -36,8 +36,8 @@ Current development goals can be found in the [plan](plan.md)
 
 Actual changes and the reasons for them can be found in [changes](changes.md)
 
-# Installation
-Details on installs are in [INSTALL.md](INSTALL.md)
+# Installation & running
+Details on installation and running Sweep are in [INSTALL.md](INSTALL.md)
 
-# See also
+# Other JIRA data analysis projects
 [jira metrics extract](https://github.com/rnwolf/jira-metrics-extract)
