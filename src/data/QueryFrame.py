@@ -47,16 +47,67 @@ class QueryFrame(object):
         except JIRAError as inst:
             Config.app.error(inst.args[1])
 
+    def info(self):
+        '''
+        Result:
+        - number of issues resulting from the query
+        -
+        :return:
+        '''
+        return "{} issues".format(self.issuedata.shape[0])
+
+    def visual_info(self):
+        return "not implemented yet: display visual info (like dashboard)"
+
+    def describe(self):
+        '''
+        Basic data on query split up according to issue types.
+
+        :return: DataFrame containig aggregated data on query
+        '''
+        it_list = ['operation', 'all'] + self.issuedata['issuetype'].unique().tolist()
+        it_list.sort()
+        d = {}
+        for it in it_list:
+            d[it] = []
+        # Get the number of issues for each issue type
+        count_df = self.issuedata[['issuetype', 'key']].groupby('issuetype').count()
+        count_df.rename(columns={'key': 'count'}, inplace=True)
+        count_df['percentage'] = count_df['count'] / count_df['count'].sum()
+
+        e = self.issuedata[['issuetype', 'timespent', 'timeoriginalestimate']]
+        r = e.groupby('issuetype').sum()
+        r[['timespent', 'timeoriginalestimate']] = r[['timespent', 'timeoriginalestimate']] / 3600
+
+        # Define percentages for timespent and timeoriginalestimate
+        r['timespent_pct'] = r['timespent'] / r['timespent'].sum()
+        r['timeoriginalestimate_pct'] = r['timeoriginalestimate'] / r['timeoriginalestimate'].sum()
+
+        s = e[['issuetype', 'timeoriginalestimate', 'timespent']].groupby('issuetype').count()
+        s.rename(
+            columns={'timeoriginalestimate': 'timeoriginalestimate_notnull', 'timespent': 'timespent_notnull'},
+            inplace=True)
+
+        # Concatenate our different dataframes (note that issuetype is index and therefor sorted)
+        x = pd.concat([count_df, r, s], axis=1)
+        x['not_estimated'] = x['count'] - x['timeoriginalestimate_notnull']
+        x['no_time_spent'] = x['count'] - x['timespent_notnull']
+
+        return x.T
+
     def _issues2dataframe(issues):
-        using_fields = ['key', 'status', 'summary', 'description', 'created', 'updated', 'issuetype', 'timeoriginalestimate', 'timespent', 'creator', 'reporter', 'assignee']
+        using_fields = ['key', 'status', 'summary', 'description', 'created', 'updated', 'issuetype',
+                        'timeoriginalestimate', 'timespent', 'creator', 'reporter', 'assignee']
         d = {}
         for k in using_fields:
             d[k] = []
+        d['closed'] = []
         for iss in issues:
             for k in using_fields:
                 d[k].append(iss[k])
+            # We add a field 'closed', based on the timestamp of reaching the last of the statuses in the changelog
+            d['closed'].append(iss.statusChangedTo(Config.config.statuses[-1]))
         df = pd.DataFrame(d)
-        df.columns = using_fields
         return df
 
     def _issues2time(issues, mindate, maxdate):
