@@ -1,12 +1,20 @@
 # sweep
-Sweep - generate unified reports on a set of differently structured projects in Jira
+
+### Sweep - analyse data from JIRA
+
+* Authenticates to and accesses JIRA
+* Sends requests to the JIRA REST API and reformats the results
+* Defines the result of a query to JIRA as a QueryFrame object which contains all date you might want to get from it
+* Partially caches results in a local database for speeding up repeatedly querying
+* Provides some utilities for dealing with the data
+* Sweep offers data in the convenient pandas DataFrame format
 
 ### New: Jupyter support
 
 Sweep now supports JQL queries which result in a `QueryFrame`, which encapsulates several pandas `DataFrames`.
 This allows for more readable operations on the data and for interactive development with Jupyter notebooks.
 
-Check out the [example notebook](src/notebook_to_jira.ipynb)
+Check out the [instructional notebook](src/notebook_to_jira.ipynb) that shows how to use Sweep and the [examples](src/examples.ipynb)
 
 # Goal
 Create unified reports on work planned and done out of Jira for a whole portfolio.
